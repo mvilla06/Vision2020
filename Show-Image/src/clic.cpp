@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
             /* Draw all points */
             for (int i = 0; i < points.size(); ++i) {
                 circle(currentImage, (Point)points[i], 5, Scalar( 0, 0, 255 ), CV_FILLED);
+                if(i>0) line(currentImage, (Point)points[i-1], (Point)points[i], Scalar(255, 0, 0), 3, 8, 0);
             }
 
             /* Show image */
