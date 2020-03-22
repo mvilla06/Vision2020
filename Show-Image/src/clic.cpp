@@ -24,16 +24,16 @@ using namespace std;
 
 // Here we will store points
 Point p(0, 0), q(0, 0);
-Mat obj;
-char o = 0;
+
+
 
 
 /* This is the callback that will only display mouse coordinates */
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param);
 
-void histogram(const Mat &image, char t);
+void histogram(const Mat &image, char t, unsigned char* threshold, char o);
 
-void draw(Mat image, char t){
+void draw(Mat image, char t, char *o, unsigned char*threshold){
     Mat roi;
     Mat img = image.clone();
     if(!t){
@@ -47,8 +47,19 @@ void draw(Mat image, char t){
                 roi = image(rec);
                 imshow("ROI", roi);
                 rectangle(img, p, q, Scalar(0, 0, 255), 1, 8, 0);
-                obj = roi.clone();
-                o = 1;
+                
+                *o = 1;
+                //Calculate the maxima and minima of the ROI 
+                for (int r = 0; r < roi.rows; r++)
+                    for (int c = 0; c < roi.cols; c++)
+                        for (int ch = 0; ch < roi.channels(); ch++)
+                        {
+                            if (roi.at<Vec3b>(r, c)[ch] < threshold[ch])
+                                threshold[ch] = roi.at<Vec3b>(r, c)[ch];
+
+                            if (roi.at<Vec3b>(r, c)[ch] > threshold[ch + roi.channels()])
+                                threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
+                        }
                 }
     }
     
@@ -64,12 +75,16 @@ int main(int argc, char *argv[])
 
     /* Create images where captured and transformed frames are going to be stored */
     Mat currentImage;
-    Mat obj;
+    
     /* Create main OpenCV window to attach callbacks */
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
-    char t = 0, h=0;
+    char t = 0, h=0, o = 0, i=1;
     char x;
+    camera>>currentImage;
+    unsigned char *threshold = new unsigned char[currentImage.channels() * 2];
+            memset(threshold, 0xff, currentImage.channels() * sizeof(char));
+            memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
     while (true)
     {
         /* Obtain a new frame from camera */
@@ -77,21 +92,25 @@ int main(int argc, char *argv[])
             camera >> currentImage;
 
         if (currentImage.data)
-        {
-            if (h)
-                histogram(currentImage, t);
-            else{
-                destroyWindow("Channel 0");
-                destroyWindow("Channel 1");
-                destroyWindow("Channel 2");
-            }
+        {   
+            
+            
+            
                 
             
             /* Show image */
 
             
-            draw(currentImage, t);
-            
+            draw(currentImage, t, &o, threshold);
+
+            //Show histograms
+            if (h)
+                histogram(currentImage, t, threshold, o);
+            else{
+                destroyWindow("Channel 0");
+                destroyWindow("Channel 1");
+                destroyWindow("Channel 2");
+            }
             
             /* If 'x' is pressed, exit program */
             
@@ -107,12 +126,15 @@ int main(int argc, char *argv[])
             else if (x=='h'){   //Show histogram
                 h= ~h;
             }
+             
         }
         else
         {
             cout << "No image data.. " << endl;
         }
     }
+    
+      delete[] threshold; 
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
@@ -137,7 +159,7 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
     }
 }
 
-void histogram(const Mat &image, char t)
+void histogram(const Mat &image, char t, unsigned char*threshold, char o)
 {
     int **channels = (int **)malloc(sizeof(int *) * image.channels());
     Mat *mats = new Mat[image.channels()];
@@ -166,23 +188,12 @@ void histogram(const Mat &image, char t)
             for (int k = 0; k < image.channels(); k++)
                 channels[k][image.at<Vec3b>(i, j)[k]]++;
 
-    //Calculate the maxima and minima of the ROI 
-    unsigned char * threshold = new unsigned char[obj.channels()*2];
-    memset(threshold, 0xff, obj.channels() * sizeof(char));
-    memset(threshold + obj.channels() * sizeof(char), 0x00, obj.channels() * sizeof(char));
+    
+    
 
     
-    if (o)
-        for (int r = 0; r < obj.rows; r++)
-            for (int c = 0; c < obj.cols; c++)
-                for (int ch = 0; ch < obj.channels(); ch++)
-                {
-                    if (obj.at<Vec3b>(r, c)[ch] < threshold[ch])
-                        threshold[ch] = obj.at<Vec3b>(r, c)[ch];
-
-                    if (obj.at<Vec3b>(r, c)[ch] > threshold[ch + obj.channels()])
-                        threshold[ch + obj.channels()] = obj.at<Vec3b>(r, c)[ch];
-                }
+    
+        
 
     for (int i = 0; i < image.channels(); i++)
     {
@@ -209,7 +220,7 @@ void histogram(const Mat &image, char t)
             mats[i].at<char>(j, pv[i] * 2 + 1) = 0x7f;
         }
 
-        printf("%d\n",threshold[i+obj.channels()]);
+        
         if (o)
         
         //Plot a vertical bar at the minimum and maximun of the ROI
@@ -217,8 +228,8 @@ void histogram(const Mat &image, char t)
         {
             mats[i].at<char>(j, threshold[i] * 2) = 0x3f;
             mats[i].at<char>(j, threshold[i] * 2 + 1) = 0x3f;
-            mats[i].at<char>(j, threshold[i+obj.channels()] * 2) = 0xff;
-            mats[i].at<char>(j, threshold[i+obj.channels()] * 2 + 1) = 0xff;
+            mats[i].at<char>(j, threshold[i+image.channels()] * 2) = 0xff;
+            mats[i].at<char>(j, threshold[i+image.channels()] * 2 + 1) = 0xff;
             
         }
 
@@ -235,6 +246,5 @@ void histogram(const Mat &image, char t)
     }
     free(channels);
     delete [] mats;
-    if (o)
-        delete[] threshold;
+    
 }
