@@ -17,20 +17,45 @@
 #include <iostream>
 #include <string.h>
 
+
+
 using namespace cv;
 using namespace std;
 
 // Here we will store points
-Point p(0, 0);
+Point p(0, 0), q(0, 0);
+
+
 
 /* This is the callback that will only display mouse coordinates */
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param);
 
-void histogram(const Mat &image);
+void histogram(const Mat &image, char t);
 
+void draw(Mat image, char t){
+    Mat obj;
+    Mat img = image.clone();
+    if(!t){
+        if(p.x>0 && p.y>0)
+            circle(img, p, 5, Scalar(255, 255, 255), 1, 8, 0);
+    }
+    else
+    {
+        if(p!=q){
+                Rect roi(p, q);
+                obj = image(roi);
+                imshow("ROI", obj);
+                rectangle(img, p, q, Scalar(0, 0, 255), 1, 8, 0);
+                }
+    }
+        
+    imshow("Image", img);
+
+}
 int main(int argc, char *argv[])
 {
     /* First, open camera device */
+    
     VideoCapture camera;
     camera.open(0);
 
@@ -40,7 +65,7 @@ int main(int argc, char *argv[])
     /* Create main OpenCV window to attach callbacks */
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
-    char t = 0;
+    char t = 0, h=0;
     char x;
     while (true)
     {
@@ -50,23 +75,37 @@ int main(int argc, char *argv[])
 
         if (currentImage.data)
         {
-
-            histogram(currentImage);
-
+            if (h)
+                histogram(currentImage, t);
+            else{
+                destroyWindow("Channel 0");
+                destroyWindow("Channel 1");
+                destroyWindow("Channel 2");
+            }
+                
+            
             /* Show image */
-            imshow("Image", currentImage);
+
+            
+            draw(currentImage, t);
 
             /* If 'x' is pressed, exit program */
-            /*if (waitKey(3) == 'x')
-				break;*/
+            
+            
             x = waitKey(3);
             if (x == ' ')
             {
-                if (t)
-                    t = 0;
-                else
-                    t = 1;
+                if(!t)
+                    q = p;
+                t = ~t;
+
             } else if(x=='x') break;
+            else if (x=='h'){
+                h= ~h;
+            }
+            else if(x=='\n'){
+                if(t) break;
+            }
         }
         else
         {
@@ -85,28 +124,32 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
         /*  Draw a point */
         p.x = x;
         p.y = y;
+        q.x = x;
+        q.y = y;
         break;
     case CV_EVENT_MOUSEMOVE:
         break;
     case CV_EVENT_LBUTTONUP:
+        q.x = x;
+        q.y = y;
         break;
     }
 }
 
-void histogram(const Mat &image)
+void histogram(const Mat &image, char t)
 {
     int **channels = (int **)malloc(sizeof(int *) * image.channels());
     Mat *mats = new Mat[image.channels()];
-    unsigned char pv[] = {0, 0, 0};
-
+    unsigned char * pv =  new unsigned char[image.channels()];
+    memset(pv, 0, sizeof(unsigned char)*image.channels());
     if (p.x != 0 && p.y != 0)
     {
 
-        circle(image, p, 5, Scalar(255, 0, 0), 1, 8, 0);
+        
         //Get the values of the three channels from the point
-        pv[0] = image.at<Vec3b>(p.y, p.x)[0];
-        pv[1] = image.at<Vec3b>(p.y, p.x)[1];
-        pv[2] = image.at<Vec3b>(p.y, p.x)[2];
+        for(int i=0; i<image.channels(); i++)
+            pv[i] = image.at<Vec3b>(p.y, p.x)[i];
+        
     }
 
     for (int i = 0; i < image.channels(); i++)
@@ -140,12 +183,18 @@ void histogram(const Mat &image)
             }
         }
 
-        //Plot a vertical bar in the position of the values of the point
-        for (int j = 0; j < 255; j++)
-        {
-            mats[i].at<char>(j, pv[i] * 2) = 0xff;
-            mats[i].at<char>(j, pv[i] * 2 + 1) = 0xff;
+        if(!t){
+            //Plot a vertical bar in the position of the values of the point
+            for (int j = 0; j < 255; j++)
+            {
+                mats[i].at<char>(j, pv[i] * 2) = 0xff;
+                mats[i].at<char>(j, pv[i] * 2 + 1) = 0xff;
+            }
+        }else{
+
         }
+
+        
         char title[20];
         sprintf(title, "Channel %d", i);
         imshow(title, mats[i]);
@@ -157,5 +206,6 @@ void histogram(const Mat &image)
         mats[i].deallocate();
     }
     free(channels);
+    delete [] mats;
     
 }
