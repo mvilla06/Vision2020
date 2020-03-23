@@ -41,6 +41,8 @@ void draw(Mat image, char t, char *o, unsigned char*threshold);
 
 void selection(Mat image, unsigned char*threshold);
 
+void bgr2yiq(Mat image);
+
 
 int main(int argc, char *argv[])
 {
@@ -57,9 +59,9 @@ int main(int argc, char *argv[])
 
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
   
-    // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale
+    // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
-    char t = 0, h = 0, o = 0, b = 0, v = 0, i = 1;
+    char t = 0, h = 0, o = 0, b = 0, v = 0, y, = 0, i = 1;
     char x;
     camera>>currentImage;
 
@@ -87,6 +89,12 @@ int main(int argc, char *argv[])
                 destroyWindow("Channel 0");
                 destroyWindow("Channel 1");
                 destroyWindow("Channel 2");
+            }
+            if(y)
+                bgr2yiq(currentImage);
+            else
+            {
+                destroyWindow("YIQ IMAGE");
             }
             
             if (b)
@@ -119,6 +127,9 @@ int main(int argc, char *argv[])
                 b = ~b;
             } else if (x == 'v') {
                 v = ~v;
+            }
+            else if (x=='y'){
+                y= ~y;
             }
              
         }
@@ -294,6 +305,33 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
     free(channels);
     delete [] mats;
     
+}
+
+void bgr2yiq(Mat image) {
+    uchar r, g, b;
+	double y, i, q;
+
+	Mat yiq = Mat::zeros(image.rows, image.cols, CV_8UC3);
+	/* Convert image from RGB to YIQ */
+
+    for (int row = 0; row < image.rows; ++row) {
+		for (int col = 0; col < image.cols; ++col){
+            r = image.at<Vec3b>(row, col)[2];
+            g = image.at<Vec3b>(row, col)[1];
+            b = image.at<Vec3b>(row, col)[0];
+			
+            y = 0.299*r + 0.587*g + 0.114*b;
+			i = 0.596*r - 0.275*g - 0.321*b;
+			q = 0.212*r - 0.523*g + 0.311*b;
+
+            yiq.at<Vec3b>(row, col)[2] = y;
+            yiq.at<Vec3b>(row, col)[1] = i;
+            yiq.at<Vec3b>(row, col)[0] = q;
+        }
+    }   
+    yiq.convertTo(yiq, CV_8UC3);
+    namedWindow("YIQ IMAGE", CV_WINDOW_AUTOSIZE);
+    imshow("YIQ IMAGE", yiq);
 }
 
 void bgr2gs(const Mat &image) {
