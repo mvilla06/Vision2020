@@ -34,6 +34,9 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
 
 void histogram(const Mat &image, char t, unsigned char* threshold, char o);
 
+void bgr2gs(const Mat &image);
+void bgr2hsv(const Mat &image);
+
 void draw(Mat image, char t, char *o, unsigned char*threshold);
 
 void selection(Mat image, unsigned char*threshold);
@@ -53,11 +56,12 @@ int main(int argc, char *argv[])
     
     /* Create main OpenCV window to attach callbacks */
     namedWindow("Image");
+
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
-
-    // Flags: t -> Freeze camera, h -> build histograms, y-> Convert YIQ
-    char t = 0, h=0, o = 0, y = 0, i=1;
-
+  
+    // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
+    // v -> Convert to HSV
+    char t = 0, h = 0, o = 0, b = 0, v = 0, y, = 0, i = 1;
     char x;
     camera>>currentImage;
 
@@ -74,12 +78,7 @@ int main(int argc, char *argv[])
         if (currentImage.data)
         {   
             
-            
-            
-                
-            
             /* Show image */
-
             
             draw(currentImage, t, &o, threshold);
 
@@ -98,6 +97,19 @@ int main(int argc, char *argv[])
                 destroyWindow("YIQ IMAGE");
             }
             
+            if (b)
+                bgr2gs(currentImage);
+            else {
+                destroyWindow("GRAYSCALE_IMAGE");
+            }
+
+            if (v) {
+                bgr2hsv(currentImage);
+            }
+            else {
+                destroyWindow("HSV image");
+            }
+
             /* If 'x' is pressed, exit program */
             
             
@@ -107,10 +119,14 @@ int main(int argc, char *argv[])
                 if(!t)
                     q = p;
                 t = ~t;
-
-            } else if(x=='x') break; //End program
-            else if (x=='h'){   //Show histogram
-                h= ~h;
+            } else if(x=='x') {
+                break; //End program
+            } else if(x=='h') {   
+                h = ~h; //Show histogram
+            } else if(x == 'b') {
+                b = ~b;
+            } else if (x == 'v') {
+                v = ~v;
             }
             else if (x=='y'){
                 y= ~y;
@@ -236,12 +252,6 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
             for (int k = 0; k < image.channels(); k++)
                 channels[k][image.at<Vec3b>(i, j)[k]]++;
 
-    
-    
-
-    
-    
-        
 
     for (int i = 0; i < image.channels(); i++)
     {
@@ -322,4 +332,33 @@ void bgr2yiq(Mat image) {
     yiq.convertTo(yiq, CV_8UC3);
     namedWindow("YIQ IMAGE", CV_WINDOW_AUTOSIZE);
     imshow("YIQ IMAGE", yiq);
+}
+
+void bgr2gs(const Mat &image) {
+    Mat gsImage = Mat::zeros(image.rows,image.cols, CV_8UC1);
+ 
+    if( image.data ) { 
+ 
+    for (int i=0; i<image.cols ; i++) {
+        for (int j=0 ; j<image.rows ; j++) { 
+            Vec3b color1 = image.at<Vec3b>(Point(i,j));
+            Scalar color2 = gsImage.at<uchar>(Point(i,j));
+            color2 = (0.11*color1.val[0]+0.59*color1.val[1]+0.3*color1.val[2]);
+    
+            gsImage.at<uchar>(Point(i,j)) = color2.val[0];
+        }
+    }
+    
+    namedWindow("GRAYSCALE_IMAGE",CV_WINDOW_AUTOSIZE); 
+    imshow("GRAYSCALE_IMAGE", gsImage); 
+    
+    }
+}
+
+void bgr2hsv(const Mat &image) {
+    if (image.data) {
+        Mat hsvImage = image.clone();
+        cvtColor(image, hsvImage, CV_BGR2HSV);
+        imshow("HSV image", hsvImage);
+    }
 }
