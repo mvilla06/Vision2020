@@ -38,6 +38,8 @@ void draw(Mat image, char t, char *o, unsigned char*threshold);
 
 void selection(Mat image, unsigned char*threshold);
 
+void bgr2yiq(Mat image);
+
 
 int main(int argc, char *argv[])
 {
@@ -53,8 +55,8 @@ int main(int argc, char *argv[])
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
 
-    // Flags: t -> Freeze camera, h -> build histograms
-    char t = 0, h=0, o = 0, i=1;
+    // Flags: t -> Freeze camera, h -> build histograms, y-> Convert YIQ
+    char t = 0, h=0, o = 0, y = 0, i=1;
 
     char x;
     camera>>currentImage;
@@ -89,6 +91,12 @@ int main(int argc, char *argv[])
                 destroyWindow("Channel 1");
                 destroyWindow("Channel 2");
             }
+            if(y)
+                bgr2yiq(currentImage);
+            else
+            {
+                destroyWindow("YIQ IMAGE");
+            }
             
             /* If 'x' is pressed, exit program */
             
@@ -103,6 +111,9 @@ int main(int argc, char *argv[])
             } else if(x=='x') break; //End program
             else if (x=='h'){   //Show histogram
                 h= ~h;
+            }
+            else if (x=='y'){
+                y= ~y;
             }
              
         }
@@ -286,3 +297,29 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
     
 }
 
+void bgr2yiq(Mat image) {
+    uchar r, g, b;
+	double y, i, q;
+
+	Mat yiq = Mat::zeros(image.rows, image.cols, CV_8UC3);
+	/* Convert image from RGB to YIQ */
+
+    for (int row = 0; row < image.rows; ++row) {
+		for (int col = 0; col < image.cols; ++col){
+            r = image.at<Vec3b>(row, col)[2];
+            g = image.at<Vec3b>(row, col)[1];
+            b = image.at<Vec3b>(row, col)[0];
+			
+            y = 0.299*r + 0.587*g + 0.114*b;
+			i = 0.596*r - 0.275*g - 0.321*b;
+			q = 0.212*r - 0.523*g + 0.311*b;
+
+            yiq.at<Vec3b>(row, col)[2] = y;
+            yiq.at<Vec3b>(row, col)[1] = i;
+            yiq.at<Vec3b>(row, col)[0] = q;
+        }
+    }   
+    yiq.convertTo(yiq, CV_8UC3);
+    namedWindow("YIQ IMAGE", CV_WINDOW_AUTOSIZE);
+    imshow("YIQ IMAGE", yiq);
+}
