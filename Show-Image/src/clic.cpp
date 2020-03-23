@@ -34,14 +34,14 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
 
 void histogram(const Mat &image, char t, unsigned char* threshold, char o);
 
-void bgr2gs(const Mat &image);
-void bgr2hsv(const Mat &image);
+void bgr2gs(Mat &image);
+void bgr2hsv(Mat &image);
+void bgr2yiq(Mat &image);
 
-void draw(Mat image, char t, char *o, unsigned char*threshold);
+void draw(Mat image, char t, char *o, unsigned char*threshold, int colorSpace);
 
-void selection(Mat image, unsigned char*threshold);
+void selection(Mat image, unsigned char*threshold, int colorSpace);
 
-void bgr2yiq(Mat image);
 
 
 int main(int argc, char *argv[])
@@ -55,32 +55,37 @@ int main(int argc, char *argv[])
     Mat currentImage;
     
     /* Create main OpenCV window to attach callbacks */
-    namedWindow("Image");
-
-    setMouseCallback("Image", mouseCoordinatesExampleCallback);
+    namedWindow("Image BGR");
+    setMouseCallback("Image BGR", mouseCoordinatesExampleCallback);
   
+
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
     char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, i = 1;
+    int colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
     char x;
-    camera>>currentImage;
+    camera >> currentImage;
 
     unsigned char *threshold = new unsigned char[currentImage.channels() * 2];
-    memset(threshold, 0xff, currentImage.channels() * sizeof(char));
-    memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
+    
     
     while (true)
     {
+
+        memset(threshold, 0xff, currentImage.channels() * sizeof(char));
+        memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
+
         /* Obtain a new frame from camera */
-        if (!t)
+        if (!t) {
             camera >> currentImage;
+            imshow("Image BGR", currentImage);
+        }
 
         if (currentImage.data)
         {   
             
             /* Show image */
-            
-            draw(currentImage, t, &o, threshold);
+            draw(currentImage, t, &o, threshold, colorSpace);
 
             //Show histograms
             if (h)
@@ -90,59 +95,59 @@ int main(int argc, char *argv[])
                 destroyWindow("Channel 1");
                 destroyWindow("Channel 2");
             }
-            if(y)
+
+            if(y) {
                 bgr2yiq(currentImage);
-            else
-            {
-                destroyWindow("YIQ IMAGE");
+                y = ~y;
             }
             
-            if (b)
+            if (b) {
                 bgr2gs(currentImage);
-            else {
-                destroyWindow("GRAYSCALE_IMAGE");
+                b = ~b;
             }
 
             if (v) {
                 bgr2hsv(currentImage);
-            }
-            else {
-                destroyWindow("HSV image");
+                v = ~v;
             }
 
             /* If 'x' is pressed, exit program */
             
             
             x = waitKey(3);
-            if (x == ' ') //Still image
-            {
-                if(!t)
-                    q = p;
-                t = ~t;
+            if (x == ' ') {
+                if(!t) q = p;
+                t = ~t; //Still image
+                colorSpace = 0;
             } else if(x=='x') {
                 break; //End program
             } else if(x=='h') {   
                 h = ~h; //Show histogram
             } else if(x == 'b') {
-                b = ~b;
+                b = ~b; //Black and white image
+                colorSpace = 1;
             } else if (x == 'v') {
-                v = ~v;
+                v = ~v; //HSV image
+                colorSpace = 3;
             }
             else if (x=='y'){
-                y= ~y;
+                y= ~y; //YIQ image
+                colorSpace = 2;
             }
-             
         }
         else
         {
             cout << "No image data.. " << endl;
+            return 1;
         }
     }
     
       delete[] threshold; 
+      
+      return 0;
 }
 
-void draw(Mat image, char t, char *o, unsigned char*threshold){
+void draw(Mat image, char t, char *o, unsigned char*threshold, int colorSpace){
     Mat roi;
     Mat img = image.clone();
     if(!t){
@@ -170,17 +175,15 @@ void draw(Mat image, char t, char *o, unsigned char*threshold){
                                 threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
                         }
 
-                selection(img, threshold);
+                selection(img, threshold, colorSpace);
 
                 }
 
     }
-    
-    imshow("Image", img);
 
 }
 
-void selection(Mat image, unsigned char*threshold) {
+void selection(Mat image, unsigned char*threshold, int colorSpace) {
     Mat selectionImg = image.clone();
 
     for (int r = 0; r < selectionImg.rows; r++) {
@@ -198,7 +201,21 @@ void selection(Mat image, unsigned char*threshold) {
         }
     }
     
-    imshow("Selection", selectionImg);
+    switch(colorSpace) {
+        case 0:
+            imshow("Selection BGR", selectionImg);
+            break;
+        case 1:
+            imshow("Selection BW", selectionImg);
+            break;
+        case 2:
+            imshow("Selection YIQ", selectionImg);
+            break;
+        case 3:
+            imshow("Selection HSV", selectionImg);
+            break;
+    }
+    
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
@@ -307,7 +324,7 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
     
 }
 
-void bgr2yiq(Mat image) {
+void bgr2yiq(Mat &image) {
     uchar r, g, b;
 	double y, i, q;
 
@@ -332,9 +349,12 @@ void bgr2yiq(Mat image) {
     yiq.convertTo(yiq, CV_8UC3);
     namedWindow("YIQ IMAGE", CV_WINDOW_AUTOSIZE);
     imshow("YIQ IMAGE", yiq);
+
+    image = yiq;
+
 }
 
-void bgr2gs(const Mat &image) {
+void bgr2gs(Mat &image) {
     Mat gsImage = Mat::zeros(image.rows,image.cols, CV_8UC1);
  
     if( image.data ) { 
@@ -352,13 +372,16 @@ void bgr2gs(const Mat &image) {
     namedWindow("GRAYSCALE_IMAGE",CV_WINDOW_AUTOSIZE); 
     imshow("GRAYSCALE_IMAGE", gsImage); 
     
+    image = gsImage;
+
     }
 }
 
-void bgr2hsv(const Mat &image) {
+void bgr2hsv(Mat &image) {
     if (image.data) {
         Mat hsvImage = image.clone();
         cvtColor(image, hsvImage, CV_BGR2HSV);
         imshow("HSV image", hsvImage);
+        image = hsvImage;
     }
 }
