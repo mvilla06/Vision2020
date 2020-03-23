@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
   
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
-    char t = 0, h = 0, o = 0, b = 0, v = 0, y, = 0, i = 1;
+    char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, i = 1;
     char x;
     camera>>currentImage;
 
