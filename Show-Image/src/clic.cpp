@@ -82,9 +82,10 @@ int main(int argc, char *argv[])
     char t = 0, h=0, o = 0, i=1;
     char x;
     camera>>currentImage;
+    //
     unsigned char *threshold = new unsigned char[currentImage.channels() * 2];
-            memset(threshold, 0xff, currentImage.channels() * sizeof(char));
-            memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
+    memset(threshold, 0xff, currentImage.channels() * sizeof(char));
+    memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
     while (true)
     {
         /* Obtain a new frame from camera */
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
             
             
             
-                
+            
             
             /* Show image */
 
@@ -226,8 +227,10 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
         //Plot a vertical bar at the minimum and maximun of the ROI
         for (int j = 0; j < 255; j++)
         {
+            //Minima
             mats[i].at<char>(j, threshold[i] * 2) = 0x3f;
             mats[i].at<char>(j, threshold[i] * 2 + 1) = 0x3f;
+            //Maxima
             mats[i].at<char>(j, threshold[i+image.channels()] * 2) = 0xff;
             mats[i].at<char>(j, threshold[i+image.channels()] * 2 + 1) = 0xff;
             
