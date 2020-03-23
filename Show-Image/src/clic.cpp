@@ -35,6 +35,7 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
 void histogram(const Mat &image, char t, unsigned char* threshold, char o);
 
 void bgr2gs(const Mat &image);
+void bgr2hsv(const Mat &image);
 
 void draw(Mat image, char t, char *o, unsigned char*threshold);
 
@@ -57,7 +58,8 @@ int main(int argc, char *argv[])
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
   
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale
-    char t = 0, h = 0, o = 0, b = 0, i = 1;
+    // v -> Convert to HSV
+    char t = 0, h = 0, o = 0, b = 0, v = 0, i = 1;
     char x;
     camera>>currentImage;
 
@@ -93,6 +95,13 @@ int main(int argc, char *argv[])
                 destroyWindow("GRAYSCALE_IMAGE");
             }
 
+            if (v) {
+                bgr2hsv(currentImage);
+            }
+            else {
+                destroyWindow("HSV image");
+            }
+
             /* If 'x' is pressed, exit program */
             
             
@@ -108,6 +117,8 @@ int main(int argc, char *argv[])
                 h = ~h; //Show histogram
             } else if(x == 'b') {
                 b = ~b;
+            } else if (x == 'v') {
+                v = ~v;
             }
              
         }
@@ -303,5 +314,13 @@ void bgr2gs(const Mat &image) {
     namedWindow("GRAYSCALE_IMAGE",CV_WINDOW_AUTOSIZE); 
     imshow("GRAYSCALE_IMAGE", gsImage); 
     
+    }
+}
+
+void bgr2hsv(const Mat &image) {
+    if (image.data) {
+        Mat hsvImage = image.clone();
+        cvtColor(image, hsvImage, CV_BGR2HSV);
+        imshow("HSV image", hsvImage);
     }
 }
