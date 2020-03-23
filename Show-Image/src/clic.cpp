@@ -36,6 +36,8 @@ void histogram(const Mat &image, char t, unsigned char* threshold, char o);
 
 void draw(Mat image, char t, char *o, unsigned char*threshold);
 
+void selection(Mat image, unsigned char*threshold);
+
 
 int main(int argc, char *argv[])
 {
@@ -56,9 +58,11 @@ int main(int argc, char *argv[])
 
     char x;
     camera>>currentImage;
+
     unsigned char *threshold = new unsigned char[currentImage.channels() * 2];
-            memset(threshold, 0xff, currentImage.channels() * sizeof(char));
-            memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
+    memset(threshold, 0xff, currentImage.channels() * sizeof(char));
+    memset(threshold + currentImage.channels() * sizeof(char), 0x00, currentImage.channels() * sizeof(char));
+    
     while (true)
     {
         /* Obtain a new frame from camera */
@@ -138,11 +142,36 @@ void draw(Mat image, char t, char *o, unsigned char*threshold){
                             if (roi.at<Vec3b>(r, c)[ch] > threshold[ch + roi.channels()])
                                 threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
                         }
+
+                selection(img, threshold);
+
                 }
+
     }
     
     imshow("Image", img);
 
+}
+
+void selection(Mat image, unsigned char*threshold) {
+    Mat selectionImg = image.clone();
+
+    for (int r = 0; r < selectionImg.rows; r++) {
+        for (int c = 0; c < selectionImg.cols; c++) {
+            bool totalCond = true;
+            for (int ch = 0; ch < selectionImg.channels(); ch++) {
+                bool cond = selectionImg.at<Vec3b>(r, c)[ch] > threshold[ch] && selectionImg.at<Vec3b>(r,c)[ch] < threshold[ch + selectionImg.channels()];
+                totalCond = totalCond && cond;
+            }
+            if (!totalCond) {
+                for (int ch = 0; ch < selectionImg.channels(); ch++) {
+                    selectionImg.at<Vec3b>(r, c)[ch] = 0;
+                }
+            }
+        }
+    }
+    
+    imshow("Selection", selectionImg);
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
