@@ -166,7 +166,7 @@ void draw(Mat image, char t, char *o, unsigned char*threshold, int colorSpace){
                 //Calculate the maxima and minima of the ROI 
                 for (int r = 0; r < roi.rows; r++)
                     for (int c = 0; c < roi.cols; c++)
-                        for (int ch = 0; ch < roi.channels(); ch++)
+                        for (int ch = 0; ch < roi.channels(); ++ch)
                         {
                             if (roi.at<Vec3b>(r, c)[ch] < threshold[ch])
                                 threshold[ch] = roi.at<Vec3b>(r, c)[ch];
@@ -355,25 +355,33 @@ void bgr2yiq(Mat &image) {
 }
 
 void bgr2gs(Mat &image) {
-    Mat gsImage = Mat::zeros(image.rows,image.cols, CV_8UC1);
+    Mat gsImage = Mat::zeros(image.rows,image.cols, CV_8UC3);
  
     if( image.data ) { 
  
-    for (int i=0; i<image.cols ; i++) {
-        for (int j=0 ; j<image.rows ; j++) { 
-            Vec3b color1 = image.at<Vec3b>(Point(i,j));
-            Scalar color2 = gsImage.at<uchar>(Point(i,j));
-            color2 = (0.11*color1.val[0]+0.59*color1.val[1]+0.3*color1.val[2]);
-    
-            gsImage.at<uchar>(Point(i,j)) = color2.val[0];
-        }
-    }
-    
-    namedWindow("GRAYSCALE_IMAGE",CV_WINDOW_AUTOSIZE); 
-    imshow("GRAYSCALE_IMAGE", gsImage); 
-    
-    image = gsImage;
+    uchar r, g, b;
+	double gs;
 
+	/* Convert image from RGB to Grayscale */
+
+    for (int row = 0; row < image.rows; ++row) {
+		for (int col = 0; col < image.cols; ++col){
+            r = image.at<Vec3b>(row, col)[2];
+            g = image.at<Vec3b>(row, col)[1];
+            b = image.at<Vec3b>(row, col)[0];
+			
+            gs = 0.299*r + 0.587*g + 0.114*b;
+
+            gsImage.at<Vec3b>(row, col)[2] = gs;
+            gsImage.at<Vec3b>(row, col)[1] = gs;
+            gsImage.at<Vec3b>(row, col)[0] = gs;
+        }
+    }   
+    gsImage.convertTo(gsImage, CV_8UC3);
+    namedWindow("GRAYSCALE IMAGE", CV_WINDOW_AUTOSIZE);
+    imshow("GRAYSCALE IMAGE", gsImage);
+
+    image = gsImage;
     }
 }
 
