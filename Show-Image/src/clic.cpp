@@ -40,7 +40,7 @@ void bgr2yiq(Mat &image);
 
 void draw(Mat image, char t, char *o, unsigned char*threshold);
 
-void selection(Mat image, unsigned char*threshold, int colorSpace);
+void selection(Mat image, unsigned char*threshold, int colorSpace, Mat original);
 
 
 
@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
 
     /* Create images where captured and transformed frames are going to be stored */
     Mat currentImage;
-    
+    Mat originalImage;
     /* Create main OpenCV window to attach callbacks */
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
@@ -77,11 +77,13 @@ int main(int argc, char *argv[])
         /* Obtain a new frame from camera */
         if (!t) {
             camera >> currentImage;
+            camera >> originalImage;
             
         }
 
         if (currentImage.data)
         {   
+
             //Convert Image only with live feed
             if(!t){
                 if (y)
@@ -115,7 +117,7 @@ int main(int argc, char *argv[])
             draw(currentImage, t, &o, threshold);
 
             if (o && f){
-                selection(currentImage, threshold, colorSpace);
+                selection(currentImage, threshold, colorSpace, originalImage);
             }
             else
                 destroyWindow("Selection");
@@ -129,8 +131,8 @@ int main(int argc, char *argv[])
                 destroyWindow("Channel 2");
             }
 
-            
-            imshow("Image", currentImage);
+            imshow("Image", originalImage);
+            imshow("Processed Image", currentImage);
             x = waitKey(3);
             switch (x)
             {
@@ -216,7 +218,7 @@ void draw(Mat image, char t, char *o, unsigned char*threshold){
 
 }
 
-void selection(Mat image, unsigned char*threshold, int colorSpace) {
+void selection(Mat image, unsigned char*threshold, int colorSpace, Mat original) {
     Mat selectionImg = image.clone();
 
     for (int r = 0; r < selectionImg.rows; r++) {
@@ -230,6 +232,11 @@ void selection(Mat image, unsigned char*threshold, int colorSpace) {
                 for (int ch = 0; ch < selectionImg.channels(); ch++) {
                     selectionImg.at<Vec3b>(r, c)[ch] = 0;
                 }
+            }
+            else
+            {
+                for( int ch = 0; ch <original.channels(); ch++)
+                    selectionImg.at<Vec3b>(r, c)[ch] = original.at<Vec3b>(r, c)[ch];
             }
         }
     }
