@@ -31,41 +31,12 @@ Point p(0, 0), q(0, 0);
 /* This is the callback that will only display mouse coordinates */
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param);
 
+
 void histogram(const Mat &image, char t, unsigned char* threshold, char o);
 
-void draw(Mat image, char t, char *o, unsigned char*threshold){
-    Mat roi;
-    Mat img = image.clone();
-    if(!t){
-        if(p.x>0 && p.y>0)
-            circle(img, p, 5, Scalar(255, 255, 255), 1, 8, 0);
-    }
-    else
-    {
-        if(p!=q){//Valid ROI selection
-                Rect rec(p, q);
-                roi = image(rec);
-                imshow("ROI", roi);
-                rectangle(img, p, q, Scalar(0, 0, 255), 1, 8, 0);
-                
-                *o = 1;
-                //Calculate the maxima and minima of the ROI 
-                for (int r = 0; r < roi.rows; r++)
-                    for (int c = 0; c < roi.cols; c++)
-                        for (int ch = 0; ch < roi.channels(); ch++)
-                        {
-                            if (roi.at<Vec3b>(r, c)[ch] < threshold[ch])
-                                threshold[ch] = roi.at<Vec3b>(r, c)[ch];
+void draw(Mat image, char t, char *o, unsigned char*threshold);
 
-                            if (roi.at<Vec3b>(r, c)[ch] > threshold[ch + roi.channels()])
-                                threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
-                        }
-                }
-    }
-    
-    imshow("Image", img);
 
-}
 int main(int argc, char *argv[])
 {
     /* First, open camera device */
@@ -79,7 +50,10 @@ int main(int argc, char *argv[])
     /* Create main OpenCV window to attach callbacks */
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
+
+    // Flags: t -> Freeze camera, h -> build histograms
     char t = 0, h=0, o = 0, i=1;
+
     char x;
     camera>>currentImage;
     unsigned char *threshold = new unsigned char[currentImage.channels() * 2];
@@ -135,6 +109,40 @@ int main(int argc, char *argv[])
     }
     
       delete[] threshold; 
+}
+
+void draw(Mat image, char t, char *o, unsigned char*threshold){
+    Mat roi;
+    Mat img = image.clone();
+    if(!t){
+        if(p.x>0 && p.y>0)
+            circle(img, p, 5, Scalar(255, 255, 255), 1, 8, 0);
+    }
+    else
+    {
+        if(p!=q){//Valid ROI selection
+                Rect rec(p, q);
+                roi = image(rec);
+                imshow("ROI", roi);
+                rectangle(img, p, q, Scalar(0, 0, 255), 1, 8, 0);
+                
+                *o = 1;
+                //Calculate the maxima and minima of the ROI 
+                for (int r = 0; r < roi.rows; r++)
+                    for (int c = 0; c < roi.cols; c++)
+                        for (int ch = 0; ch < roi.channels(); ch++)
+                        {
+                            if (roi.at<Vec3b>(r, c)[ch] < threshold[ch])
+                                threshold[ch] = roi.at<Vec3b>(r, c)[ch];
+
+                            if (roi.at<Vec3b>(r, c)[ch] > threshold[ch + roi.channels()])
+                                threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
+                        }
+                }
+    }
+    
+    imshow("Image", img);
+
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
@@ -248,3 +256,4 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
     delete [] mats;
     
 }
+
