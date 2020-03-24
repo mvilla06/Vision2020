@@ -17,37 +17,56 @@
 #include <iostream>
 #include <string.h>
 
-
-
 using namespace cv;
 using namespace std;
 
 // Here we will store points
 Point p(0, 0), q(0, 0);
-
-
-
-
+unsigned char thVal = 0;
 /* This is the callback that will only display mouse coordinates */
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param);
+void mouseCallback(int event, int x, int y, int flags, void* param){
+    
+    switch (event)
+    {
+    case CV_EVENT_LBUTTONDOWN:
+        
+       
+        break;
+    case CV_EVENT_MOUSEMOVE:
+        break;
+    case CV_EVENT_LBUTTONUP:
+         thVal = x>>1;
 
-
-void histogram(const Mat &image, char t, unsigned char* threshold, char o);
-
+        break;
+    }
+}
+void histogram(const Mat &image, char t, unsigned char *threshold, char o, char colorSpace);
+void destroyHistogram()
+{
+    destroyWindow("Blue");
+    destroyWindow("Green");
+    destroyWindow("Red");
+    destroyWindow("GreyScale");
+    destroyWindow("Y");
+    destroyWindow("In-phase");
+    destroyWindow("Quadrature");
+    destroyWindow("Hue");
+    destroyWindow("Saturation");
+    destroyWindow("Value");
+}
 void bgr2gs(Mat &image);
 void bgr2hsv(Mat &image);
 void bgr2yiq(Mat &image);
 
-void draw(Mat image, char t, char *o, unsigned char*threshold);
+void draw(Mat image, char t, char *o, unsigned char *threshold);
 
-void selection(Mat image, unsigned char*threshold, int colorSpace, Mat original);
-
-
+void selection(Mat image, unsigned char *threshold, Mat original);
 
 int main(int argc, char *argv[])
 {
     /* First, open camera device */
-    
+
     VideoCapture camera;
     camera.open(0);
 
@@ -57,35 +76,32 @@ int main(int argc, char *argv[])
     /* Create main OpenCV window to attach callbacks */
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
-  
 
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
-    char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, i = 1, f = 0;
-    int colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
+    char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, f = 0;
+    char colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
     char x;
     camera >> currentImage;
 
     unsigned char *threshold = new unsigned char[currentImage.channels() * 2];
-    
-    
+
     while (true)
     {
 
-        
-
         /* Obtain a new frame from camera */
-        if (!t) {
+        if (!t)
+        {
             camera >> currentImage;
             camera >> originalImage;
-            
         }
 
         if (currentImage.data)
-        {   
+        {
 
             //Convert Image only with live feed
-            if(!t){
+            if (!t)
+            {
                 if (y)
                 {
                     bgr2yiq(currentImage);
@@ -108,27 +124,31 @@ int main(int argc, char *argv[])
                 }
             }
 
-
-            if(!o){
+            if (!o)
+            {
                 destroyWindow("ROI");
                 destroyWindow("Selection");
             }
             /* Show image */
             draw(currentImage, t, &o, threshold);
 
-            if (o && f){
-                selection(currentImage, threshold, colorSpace, originalImage);
+            if (o && f)
+            {
+                selection(currentImage, threshold, originalImage);
             }
             else
                 destroyWindow("Selection");
-            
+
             //Show histograms
             if (h)
-                histogram(currentImage, t, threshold, o);
-            else{
-                destroyWindow("Channel 0");
-                destroyWindow("Channel 1");
-                destroyWindow("Channel 2");
+                histogram(currentImage, t, threshold, o, colorSpace);
+            else
+            {
+                
+                        
+                    destroyHistogram();   
+                
+                
             }
 
             imshow("Image", originalImage);
@@ -139,8 +159,8 @@ int main(int argc, char *argv[])
             case ' ': //Freeze image
                 if (!t)
                     q = p;
-                t = ~t; 
-                colorSpace = 0;
+                t = ~t;
+                
                 break;
             case 'x': //End program
                 goto end;
@@ -148,20 +168,41 @@ int main(int argc, char *argv[])
             case 'h': //Show histograms
                 h = ~h;
                 break;
-            case 'b': //Greyscale 
-                b = ~b;
+            case 'b': //Greyscale
+                
+                if(!b)
                 colorSpace = 1;
+                else
+                colorSpace = 0;
+                b = ~b;
                 o = 0;
+                y = 0;
+                v = 0;
+                destroyHistogram();
+                destroyWindow("Threshold");
+                destroyWindow("Binary");
                 break;
             case 'y': //YIQ
-                y = ~y; 
+                if(!y)
                 colorSpace = 2;
+                else
+                colorSpace = 0;
+                y = ~y;
                 o = 0;
+                b = 0;
+                v = 0;
+                destroyHistogram();
                 break;
             case 'v': //HSV
-                v = ~v;
+                if(!v)
                 colorSpace = 3;
+                else
+                colorSpace = 0;
+                v = ~v;
                 o = 0;
+                y = 0;
+                b = 0;
+                destroyHistogram();
                 break;
             case 'f': //Filter image
                 f = ~f;
@@ -174,88 +215,78 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
-    end:
-      delete[] threshold; 
-      
-      return 0;
+end:
+    delete[] threshold;
+
+    return 0;
 }
 
-void draw(Mat image, char t, char *o, unsigned char*threshold){
+void draw(Mat image, char t, char *o, unsigned char *threshold)
+{
     Mat roi;
-    Mat img = image.clone();
-    if(!t){
-        if(p.x>0 && p.y>0)
-            circle(img, p, 5, Scalar(255, 255, 255), 1, 8, 0);
+    
+    if (!t)
+    {
+        if (p.x > 0 && p.y > 0)
+            circle(image, p, 5, Scalar(255, 255, 255), 1, 8, 0);
     }
     else
     {
-        if(p!=q){//Valid ROI selection
-                Rect rec(p, q);
-                roi = image(rec);
-                imshow("ROI", roi);
-                rectangle(img, p, q, Scalar(0, 0, 255), 1, 8, 0);
-                
-                *o = 1;
-                memset(threshold, 0xff, image.channels() * sizeof(char));
-                memset(threshold + image.channels() * sizeof(char), 0x00, image.channels() * sizeof(char));
-                //Calculate the maxima and minima of the ROI 
-                for (int r = 0; r < roi.rows; r++)
-                    for (int c = 0; c < roi.cols; c++)
-                        for (int ch = 0; ch < roi.channels(); ++ch)
-                        {
-                            if (roi.at<Vec3b>(r, c)[ch] < threshold[ch])
-                                threshold[ch] = roi.at<Vec3b>(r, c)[ch];
+        if (p != q)
+        { //Valid ROI selection
+            Rect rec(p, q);
+            roi = image(rec);
+            imshow("ROI", roi);
+            //rectangle(img, p, q, Scalar(0, 0, 255), 1, 8, 0);
 
-                            if (roi.at<Vec3b>(r, c)[ch] > threshold[ch + roi.channels()])
-                                threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
-                        }
+            *o = 1;
+            memset(threshold, 0xff, image.channels() * sizeof(char));
+            memset(threshold + image.channels() * sizeof(char), 0x00, image.channels() * sizeof(char));
+            //Calculate the maxima and minima of the ROI
+            for (int r = 0; r < roi.rows; r++)
+                for (int c = 0; c < roi.cols; c++)
+                    for (int ch = 0; ch < roi.channels(); ++ch)
+                    {
+                        if (roi.at<Vec3b>(r, c)[ch] < threshold[ch])
+                            threshold[ch] = roi.at<Vec3b>(r, c)[ch];
 
-                
-
-                }
-        
+                        if (roi.at<Vec3b>(r, c)[ch] > threshold[ch + roi.channels()])
+                            threshold[ch + roi.channels()] = roi.at<Vec3b>(r, c)[ch];
+                    }
+        }
     }
-
 }
 
-void selection(Mat image, unsigned char*threshold, int colorSpace, Mat original) {
+void selection(Mat image, unsigned char *threshold, Mat original)
+{
     Mat selectionImg = image.clone();
 
-    for (int r = 0; r < selectionImg.rows; r++) {
-        for (int c = 0; c < selectionImg.cols; c++) {
+    for (int r = 0; r < selectionImg.rows; r++)
+    {
+        for (int c = 0; c < selectionImg.cols; c++)
+        {
             bool totalCond = true;
-            for (int ch = 0; ch < selectionImg.channels(); ch++) {
-                bool cond = selectionImg.at<Vec3b>(r, c)[ch] > threshold[ch] && selectionImg.at<Vec3b>(r,c)[ch] < threshold[ch + selectionImg.channels()];
+            for (int ch = 0; ch < selectionImg.channels(); ch++)
+            {
+                bool cond = selectionImg.at<Vec3b>(r, c)[ch] > threshold[ch] && selectionImg.at<Vec3b>(r, c)[ch] < threshold[ch + selectionImg.channels()];
                 totalCond = totalCond && cond;
             }
-            if (!totalCond) {
-                for (int ch = 0; ch < selectionImg.channels(); ch++) {
+            if (!totalCond)
+            {
+                for (int ch = 0; ch < selectionImg.channels(); ch++)
+                {
                     selectionImg.at<Vec3b>(r, c)[ch] = 0;
                 }
             }
             else
             {
-                for( int ch = 0; ch <original.channels(); ch++)
-                    selectionImg.at<Vec3b>(r, c)[ch] = original.at<Vec3b>(r, c)[ch];
+                for (int ch = 0; ch < original.channels(); ch++)
+                    selectionImg.at<Vec3b>(r, c)[ch] = 0xFF;//original.at<Vec3b>(r, c)[ch];
             }
         }
     }
     imshow("Selection", selectionImg);
-    
-    /*switch(colorSpace) {
-        case 0:
-            imshow("Selection BGR", selectionImg);
-            break;
-        case 1:
-            imshow("Selection BW", selectionImg);
-            break;
-        case 2:
-            imshow("Selection YIQ", selectionImg);
-            break;
-        case 3:
-            imshow("Selection HSV", selectionImg);
-            break;
-    }*/
+
     
 }
 
@@ -277,25 +308,23 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
     case CV_EVENT_LBUTTONUP:
         q.x = x;
         q.y = y;
-        
+
         break;
     }
 }
 
-void histogram(const Mat &image, char t, unsigned char*threshold, char o)
+void histogram(const Mat &image, char t, unsigned char *threshold, char o, char colorSpace)
 {
     int **channels = (int **)malloc(sizeof(int *) * image.channels());
     Mat *mats = new Mat[image.channels()];
-    unsigned char * pv =  new unsigned char[image.channels()];
-    memset(pv, 0, sizeof(unsigned char)*image.channels());
+    unsigned char *pv = new unsigned char[image.channels()];
+    memset(pv, 0, sizeof(unsigned char) * image.channels());
     if (p.x != 0 && p.y != 0)
     {
 
-        
         //Get the values of the three channels from the point
-        for(int i=0; i<image.channels(); i++)
+        for (int i = 0; i < image.channels(); i++)
             pv[i] = image.at<Vec3b>(p.y, p.x)[i];
-        
     }
 
     for (int i = 0; i < image.channels(); i++)
@@ -310,7 +339,6 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
         for (int j = 0; j < image.cols; j++)
             for (int k = 0; k < image.channels(); k++)
                 channels[k][image.at<Vec3b>(i, j)[k]]++;
-
 
     for (int i = 0; i < image.channels(); i++)
     {
@@ -337,22 +365,73 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
             mats[i].at<char>(j, pv[i] * 2 + 1) = 0x7f;
         }
 
-        
         if (o)
-        
-        //Plot a vertical bar at the minimum and maximun of the ROI
-        for (int j = 0; j < 255; j++)
-        {
-            mats[i].at<char>(j, threshold[i] * 2) = 0x3f;
-            mats[i].at<char>(j, threshold[i] * 2 + 1) = 0x3f;
-            mats[i].at<char>(j, threshold[i+image.channels()] * 2) = 0xff;
-            mats[i].at<char>(j, threshold[i+image.channels()] * 2 + 1) = 0xff;
-            
-        }
+
+            //Plot a vertical bar at the minimum and maximun of the ROI
+            for (int j = 0; j < 255; j++)
+            {
+                mats[i].at<char>(j, threshold[i] * 2) = 0x3f;
+                mats[i].at<char>(j, threshold[i] * 2 + 1) = 0x3f;
+                mats[i].at<char>(j, threshold[i + image.channels()] * 2) = 0xff;
+                mats[i].at<char>(j, threshold[i + image.channels()] * 2 + 1) = 0xff;
+            }
 
 
         char title[20];
-        sprintf(title, "Channel %d", i);
+        switch(colorSpace) {
+        case 0: //BGR
+            switch (i){
+                case 0: 
+                sprintf(title, "Blue");
+                break;
+                case 1:
+                sprintf(title, "Green");
+                break;
+                case 2:
+                sprintf(title, "Red");
+                break;
+            }
+            break;
+        case 1:
+            
+                for (int j = 0; j < 255; j++)
+            {
+                mats[i].at<char>(j, thVal*2) = 0xf0;
+                mats[i].at<char>(j, thVal*2 + 1) = 0xf0;
+                
+            }
+                sprintf(title, "GreyScale");
+                
+            
+            break;
+        case 2:
+            switch (i){
+                case 0: 
+                sprintf(title, "Y");
+                break;
+                case 1:
+                sprintf(title, "In-phase");
+                break;
+                case 2:
+                sprintf(title, "Quadrature");
+                break;
+            }
+            break;
+        case 3:
+            switch (i){
+                case 0: 
+                sprintf(title, "Hue");
+                break;
+                case 1:
+                sprintf(title, "Saturation");
+                break;
+                case 2:
+                sprintf(title, "Value");
+                break;
+            }
+            break;
+    }
+        
         imshow(title, mats[i]);
     }
 
@@ -362,77 +441,104 @@ void histogram(const Mat &image, char t, unsigned char*threshold, char o)
         mats[i].deallocate();
     }
     free(channels);
-    delete [] mats;
-    
+    delete[] mats;
 }
 
-void bgr2yiq(Mat &image) {
+void bgr2yiq(Mat &image)
+{
     uchar r, g, b;
-	double y, i, q;
+    double y, i, q;
 
-	Mat yiq = Mat::zeros(image.rows, image.cols, CV_8UC3);
-	/* Convert image from RGB to YIQ */
+    Mat yiq = Mat::zeros(image.rows, image.cols, CV_8UC3);
+    /* Convert image from RGB to YIQ */
 
-    for (int row = 0; row < image.rows; ++row) {
-		for (int col = 0; col < image.cols; ++col){
+    for (int row = 0; row < image.rows; ++row)
+    {
+        for (int col = 0; col < image.cols; ++col)
+        {
             r = image.at<Vec3b>(row, col)[2];
             g = image.at<Vec3b>(row, col)[1];
             b = image.at<Vec3b>(row, col)[0];
-			
-            y = 0.299*r + 0.587*g + 0.114*b;
-			i = 0.596*r - 0.275*g - 0.321*b;
-			q = 0.212*r - 0.523*g + 0.311*b;
 
-            i/=.596*2;
-            q/=.523*2;
-            i+=128;
-            q+=128;
+            y = 0.299 * r + 0.587 * g + 0.114 * b;
+            i = 0.596 * r - 0.275 * g - 0.321 * b;
+            q = 0.212 * r - 0.523 * g + 0.311 * b;
+
+            i /= .596 * 2;
+            q /= .523 * 2;
+            i += 128;
+            q += 128;
             yiq.at<Vec3b>(row, col)[0] = y;
             yiq.at<Vec3b>(row, col)[1] = i;
             yiq.at<Vec3b>(row, col)[2] = q;
         }
-    }   
-    //yiq.convertTo(yiq, CV_8U);
-    //namedWindow("YIQ IMAGE", CV_WINDOW_AUTOSIZE);
-    //imshow("YIQ IMAGE", yiq);
-
+    }
+    
     image = yiq;
-
 }
 
-void bgr2gs(Mat &image) {
-    Mat gsImage = Mat::zeros(image.rows,image.cols, CV_8UC3);
- 
-    if( image.data ) { 
- 
-    uchar r, g, b;
-	double gs;
+void bgr2gs(Mat &image)
+{
+    Mat gsImage = Mat::zeros(image.rows, image.cols, CV_8UC(3));
 
-	/* Convert image from RGB to Grayscale */
+    if (image.data)
+    {
 
-    for (int row = 0; row < image.rows; ++row) {
-		for (int col = 0; col < image.cols; ++col){
-            r = image.at<Vec3b>(row, col)[2];
-            g = image.at<Vec3b>(row, col)[1];
-            b = image.at<Vec3b>(row, col)[0];
-			
-            gs = 0.299*r + 0.587*g + 0.114*b;
+        uchar r, g, b;
+        double gs;
 
-            gsImage.at<Vec3b>(row, col)[2] = gs;
-            gsImage.at<Vec3b>(row, col)[1] = gs;
-            gsImage.at<Vec3b>(row, col)[0] = gs;
+        /* Convert image from RGB to Grayscale */
+
+        for (int row = 0; row < image.rows; ++row)
+        {
+            for (int col = 0; col < image.cols; ++col)
+            {
+                r = image.at<Vec3b>(row, col)[2];
+                g = image.at<Vec3b>(row, col)[1];
+                b = image.at<Vec3b>(row, col)[0];
+
+                gs = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                gsImage.at<Vec3b>(row, col)[2] = gs;
+                gsImage.at<Vec3b>(row, col)[1] = gs;
+                gsImage.at<Vec3b>(row, col)[0] = gs;
+            }
         }
-    }   
-    gsImage.convertTo(gsImage, CV_8UC3);
-    //namedWindow("GRAYSCALE IMAGE", CV_WINDOW_AUTOSIZE);
-    //imshow("GRAYSCALE IMAGE", gsImage);
-
-    image = gsImage;
+        gsImage.convertTo(gsImage, CV_8UC3);
+        namedWindow("Threshold", CV_WINDOW_AUTOSIZE);
+        Mat th(100,512, CV_8UC(1), Scalar(255));
+        for (int i = 0; i<256; i++)
+            for(int j = 0; j<100; j++){
+                th.at<char>(j, 2*i) = i;
+                th.at<char>(j, 2*i+1) = i;
+            }
+         for (int j = 0; j < 100; j++)
+            {
+                th.at<char>(j, thVal*2) = 0xf0;
+                th.at<char>(j, thVal*2 + 1) = 0xf0;
+                
+            }
+        imshow("Threshold", th);
+        setMouseCallback("Threshold", mouseCallback);
+        Mat binary = gsImage.clone();
+        for (int row = 0; row<gsImage.rows; row++)
+            for (int col = 0; col<gsImage.cols; col++)
+                for(int ch = 0; ch<gsImage.channels(); ch++)
+                    if(gsImage.at<Vec3b>(row, col)[ch]>thVal)
+                        binary.at<Vec3b>(row,col)[ch] = 0xFF;
+                    else
+                        binary.at<Vec3b>(row, col)[ch] = 0;
+         
+        imshow("Binary", binary);
+                    
+        image = gsImage;
     }
 }
 
-void bgr2hsv(Mat &image) {
-    if (image.data) {
+void bgr2hsv(Mat &image)
+{
+    if (image.data)
+    {
         Mat hsvImage = image.clone();
         cvtColor(image, hsvImage, CV_BGR2HSV);
         //imshow("HSV image", hsvImage);
