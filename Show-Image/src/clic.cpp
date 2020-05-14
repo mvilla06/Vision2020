@@ -128,7 +128,7 @@ void bgr2yiq(Mat &image);
 
 void draw(Mat image, char t, char *o, unsigned char *threshold);
 
-void selection(Mat image, unsigned char *threshold, Mat original);
+void selection(Mat image, unsigned char *threshold, Mat original, char * r);
 
 
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
-    char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, f = 0;
+    char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, f = 0, r = 0;
     char colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
     char x;
     camera >> currentImage;
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
             if (o && f)
             {
-                selection(currentImage, threshold, originalImage);
+                selection(currentImage, threshold, originalImage, &r);
             }
             else
                 destroyWindow("Selection");
@@ -276,6 +276,9 @@ int main(int argc, char *argv[])
             case 'f': //Filter image
                 f = ~f;
                 break;
+            case 'r': //Get regions
+                r = 1;
+                break;
             }
         }
         else
@@ -326,7 +329,7 @@ void draw(Mat image, char t, char *o, unsigned char *threshold)
     }
 }
 
-void selection(Mat image, unsigned char *threshold, Mat original)
+void selection(Mat image, unsigned char *threshold, Mat original, char * r)
 {
     Mat selectionImg = image.clone();
     Mat filteredImage(image.rows, image.cols, CV_8UC1, Scalar(255));
@@ -354,6 +357,7 @@ void selection(Mat image, unsigned char *threshold, Mat original)
         }
     }
     imshow("Selection", filteredImage);
+    if(*r){
     long int moments[OBJECTS_TO_FIND*6];
     getRegions(filteredImage, moments);
 
@@ -366,6 +370,8 @@ void selection(Mat image, unsigned char *threshold, Mat original)
         printf("%d M11: %ld\t",i, moments[i*6+4]);
         printf("%d M02: %ld\t",i, moments[i*6+5]);
         printf("\n");
+    }
+    *r = 0;
     }
     
 }
