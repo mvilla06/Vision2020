@@ -16,6 +16,10 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <string.h>
+#include <vector>
+#include <queue>
+
+#define OBJECTS_TO_FIND 2
 
 using namespace cv;
 using namespace std;
@@ -23,6 +27,69 @@ using namespace std;
 // Here we will store points
 Point p(0, 0), q(0, 0);
 unsigned char thVal = 0;
+
+void getRegions(Mat &image, long int * ordinary_moments ){
+    Mat color(image.rows, image.cols, CV_8UC1, Scalar(0));
+    
+    
+    memset(ordinary_moments, 0, OBJECTS_TO_FIND*sizeof(long int)*6);
+    
+
+    for(int k = 1; k<OBJECTS_TO_FIND+1; k++){
+        printf("\n");
+        int x, y;
+        do{
+        x = rand()%image.cols;
+        y = rand()%image.rows;
+        
+        }while(image.at<uchar>(y, x) ==0 || color.at<uchar>(y, x)!=0);
+        
+        vector<Point> vecinos;
+        Point p(0, 1);
+        vecinos.push_back(p);
+        p.x = -1;
+        p.y = 0;
+        vecinos.push_back(p);
+        p.x = 0;
+        p.y = -1;
+        vecinos.push_back(p);
+        p.x = 1;
+        p.y = 0;
+        vecinos.push_back(p);
+
+        Point q(x, y);
+        queue<Point> lista;
+        lista.push(q);
+        color.at<uchar>(q) = k*80;
+        Point punto;
+        while(lista.empty()==false){
+            
+            punto.x = lista.front().x;
+            punto.y = lista.front().y;
+
+            ordinary_moments[(k-1)*6+0]++;
+            ordinary_moments[(k-1)*6+1] += punto.x;
+            ordinary_moments[(k-1)*6+2] += punto.y;
+            ordinary_moments[(k-1)*6+3] += punto.x*punto.x;
+            ordinary_moments[(k-1)*6+4] += punto.x*punto.y;
+            ordinary_moments[(k-1)*6+5] += punto.y*punto.y;
+            lista.pop();
+            for(int i = 0; i<4; i++){
+                
+                if(image.at<uchar>(punto+vecinos[i]) ==255 && color.at<uchar>(punto+vecinos[i])==0){
+                    lista.push(punto+vecinos[i]);
+                    color.at<uchar>(punto+vecinos[i]) = k*80;
+                }
+            }
+
+        }
+        
+    }
+    imshow("Color", color);
+    
+}
+
+
 /* This is the callback that will only display mouse coordinates */
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param);
 void mouseCallback(int event, int x, int y, int flags, void* param){
@@ -62,6 +129,8 @@ void bgr2yiq(Mat &image);
 void draw(Mat image, char t, char *o, unsigned char *threshold);
 
 void selection(Mat image, unsigned char *threshold, Mat original);
+
+
 
 int main(int argc, char *argv[])
 {
@@ -260,7 +329,7 @@ void draw(Mat image, char t, char *o, unsigned char *threshold)
 void selection(Mat image, unsigned char *threshold, Mat original)
 {
     Mat selectionImg = image.clone();
-
+    Mat filteredImage(image.rows, image.cols, CV_8UC1, Scalar(255));
     for (int r = 0; r < selectionImg.rows; r++)
     {
         for (int c = 0; c < selectionImg.cols; c++)
@@ -273,20 +342,31 @@ void selection(Mat image, unsigned char *threshold, Mat original)
             }
             if (!totalCond)
             {
-                for (int ch = 0; ch < selectionImg.channels(); ch++)
-                {
-                    selectionImg.at<Vec3b>(r, c)[ch] = 0;
-                }
+                
+                filteredImage.at<uchar>(r, c) = 0;
+                
             }
             else
             {
-                for (int ch = 0; ch < original.channels(); ch++)
-                    selectionImg.at<Vec3b>(r, c)[ch] = 0xFF;//original.at<Vec3b>(r, c)[ch];
+                
+                    filteredImage.at<uchar>(r, c) = 0xFF;
             }
         }
     }
-    imshow("Selection", selectionImg);
+    imshow("Selection", filteredImage);
+    long int moments[OBJECTS_TO_FIND*6];
+    getRegions(filteredImage, moments);
 
+    for(int i=0; i<OBJECTS_TO_FIND; i++){
+        
+        printf("%d M00: %ld\t",i, moments[i*6+0]);
+        printf("%d M10: %ld\t",i, moments[i*6+1]);
+        printf("%d M01: %ld\t",i, moments[i*6+2]);
+        printf("%d M20: %ld\t",i, moments[i*6+3]);
+        printf("%d M11: %ld\t",i, moments[i*6+4]);
+        printf("%d M02: %ld\t",i, moments[i*6+5]);
+        printf("\n");
+    }
     
 }
 
@@ -479,13 +559,15 @@ void bgr2yiq(Mat &image)
 
 void bgr2gs(Mat &image)
 {
-    Mat gsImage = Mat::zeros(image.rows, image.cols, CV_8UC(3));
+    
+    Mat gsImage(image.rows, image.cols, CV_8UC1, Scalar(0));
 
     if (image.data)
     {
 
         uchar r, g, b;
         double gs;
+        uchar val;
 
         /* Convert image from RGB to Grayscale */
 
@@ -498,13 +580,15 @@ void bgr2gs(Mat &image)
                 b = image.at<Vec3b>(row, col)[0];
 
                 gs = 0.299 * r + 0.587 * g + 0.114 * b;
-
-                gsImage.at<Vec3b>(row, col)[2] = gs;
+                val = (uchar)gs;
+                gsImage.at<uchar>(row, col) = val;
+                
+               /* gsImage.at<Vec3b>(row, col)[2] = gs;
                 gsImage.at<Vec3b>(row, col)[1] = gs;
-                gsImage.at<Vec3b>(row, col)[0] = gs;
+                gsImage.at<Vec3b>(row, col)[0] = gs;*/
             }
         }
-        gsImage.convertTo(gsImage, CV_8UC3);
+        //gsImage.convertTo(gsImage, CV_8UC3);
         namedWindow("Threshold", CV_WINDOW_AUTOSIZE);
         Mat th(100,512, CV_8UC(1), Scalar(255));
         for (int i = 0; i<256; i++)
@@ -523,15 +607,15 @@ void bgr2gs(Mat &image)
         Mat binary = gsImage.clone();
         for (int row = 0; row<gsImage.rows; row++)
             for (int col = 0; col<gsImage.cols; col++)
-                for(int ch = 0; ch<gsImage.channels(); ch++)
-                    if(gsImage.at<Vec3b>(row, col)[ch]>thVal)
-                        binary.at<Vec3b>(row,col)[ch] = 0xFF;
+                    if(gsImage.at<uchar>(row, col)>thVal)
+                        binary.at<uchar>(row,col) = 0xFF;
                     else
-                        binary.at<Vec3b>(row, col)[ch] = 0;
+                        binary.at<uchar>(row, col) = 0;
          
         imshow("Binary", binary);
                     
         image = gsImage;
+
     }
 }
 
