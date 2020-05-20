@@ -19,7 +19,16 @@
 #include <vector>
 #include <queue>
 
+#define TRAIN
+
+#ifdef TRAIN
+#define OBJECTS_TO_FIND 1
+int samples = 0;
+int next_sample = 0;
+int x = 1;
+#else
 #define OBJECTS_TO_FIND 2
+#endif
 
 using namespace cv;
 using namespace std;
@@ -36,13 +45,13 @@ void getRegions(Mat &image, long int * ordinary_moments ){
     
 
     for(int k = 1; k<OBJECTS_TO_FIND+1; k++){
-        printf("\n");
-        int x, y;
+        //printf("\n");
+        int x, y, timeout=0;
         do{
         x = rand()%image.cols;
         y = rand()%image.rows;
-        
-        }while(image.at<uchar>(y, x) ==0 || color.at<uchar>(y, x)!=0);
+        timeout++;
+        }while((image.at<uchar>(y, x) ==0 || color.at<uchar>(y, x)!=0 )&& timeout<10000);
         
         vector<Point> vecinos;
         Point p(0, 1);
@@ -277,9 +286,23 @@ int main(int argc, char *argv[])
                 f = ~f;
                 break;
             case 'r': //Get regions
-                r = 1;
+                if(r){
+                    destroyWindow("Color");
+                    destroyWindow("Centroid");
+                }
+                r = ~r;
                 break;
+            #ifdef TRAIN
+            case 'n': //next_sample sample
+                next_sample = 1;
+                break;
+            #endif
             }
+            #ifdef TRAIN
+            if (samples==40)
+            goto end;
+            #endif
+            
         }
         else
         {
@@ -356,23 +379,109 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             }
         }
     }
+
+    morphologyEx(filteredImage, filteredImage, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size (3,3)), Point(-1, -1) , 3); 
     imshow("Selection", filteredImage);
     if(*r){
+    static FILE * file;
+    #ifdef TRAIN
+    if(!file)
+    file = fopen("parameters.txt", "w");
+    #else
+    file = fopen("parameters.txt", "r");
+    #endif
     long int moments[OBJECTS_TO_FIND*6];
+    double mu[OBJECTS_TO_FIND*3]; //Only second order centralized moments
+    double nu[OBJECTS_TO_FIND*3]; //Only second order normalized moments
+    double phi[OBJECTS_TO_FIND*2]; //Only first two moment invariant
+    int X[OBJECTS_TO_FIND*3]; //Centroid and angle
     getRegions(filteredImage, moments);
 
     for(int i=0; i<OBJECTS_TO_FIND; i++){
         
-        printf("%d M00: %ld\t",i, moments[i*6+0]);
-        printf("%d M10: %ld\t",i, moments[i*6+1]);
-        printf("%d M01: %ld\t",i, moments[i*6+2]);
-        printf("%d M20: %ld\t",i, moments[i*6+3]);
-        printf("%d M11: %ld\t",i, moments[i*6+4]);
-        printf("%d M02: %ld\t",i, moments[i*6+5]);
-        printf("\n");
+        long int m00 = moments[i*6+0];
+        long int m10 = moments[i*6+1];
+        long int m01 = moments[i*6+2];
+        long int m20 = moments[i*6+3];
+        long int m11 = moments[i*6+4];
+        long int m02 = moments[i*6+5];
+        
+        /*printf("%d M00: %ld\t",i, m00);
+        printf("%d M10: %ld\t",i, m10);
+        printf("%d M01: %ld\t",i, m01);
+        printf("%d M20: %ld\t",i, m20);
+        printf("%d M11: %ld\t",i, m11);
+        printf("%d M02: %ld\t",i, m02);
+        printf("\n");*/
+        float x_bar = m10/m00;
+        float y_bar = m01/m00;
+        double mu20 = m20 - x_bar*m10;
+        double mu02 = m02 - y_bar*m01;
+        double mu11 = m11 - x_bar*y_bar*m00;
+
+        double nu20 = mu20/(m00*m00);
+        double nu02 = mu02/(m00*m00);
+        double nu11 = mu11/(m00*m00);
+
+        /*printf("%d mu20: %f\t",i, mu20);
+        printf("%d mu02: %f\t",i, mu02);
+        printf("%d mu11: %f\t",i, mu11);
+        printf("%d nu20: %f\t",i, nu20);
+        printf("%d nu02: %f\t",i, nu02);
+        printf("%d nu11: %f\t",i, nu11);
+        printf("\n\n");*/
+        double phi1 = nu20 + nu02;
+        double phi2 = pow(nu20-nu02, 2)+4*nu11*nu11;
+        /*printf("%f\t", phi1);
+        printf("%f", phi2);
+        printf("\n\n\n");*/
+        phi[2*i] = phi1;
+        phi[2*i+1] = phi2;
+        float theta = atan2(2*mu11, mu20 - mu02);
+        circle(selectionImg, Point((int)x_bar, (int)y_bar), 5, Scalar(0, 0,255), -1, 8, 0);
     }
-    *r = 0;
+    //*r = 0;
+    imshow("Centroid", selectionImg);
+    #ifdef TRAIN
+        static double phi_1[10];
+        static double phi_2[10];
+        if(next_sample){
+            next_sample = 0;
+            phi_1 [samples%10]= phi[0];
+            phi_2 [samples%10]= phi[1];
+            samples++;
+        }
+        
+        if(samples%10==0 && samples!=0 ){
+            if(x){
+            x = 0;
+            destroyAllWindows();
+            double phi1_avg, phi2_avg, phi1_dev, phi2_dev;
+            for(int i=0; i<10; i++){
+                phi1_avg+=phi_1[i]/10;
+                phi2_avg+=phi_2[i]/10;
+            }
+            for(int i=0; i<10; i++){
+                phi1_dev += pow(phi_1[i]-phi1_avg, 2);
+                phi2_dev += pow(phi_2[i]-phi2_avg, 2);
+            }
+            phi1_dev /= 10;
+            phi2_dev /=10;
+            phi1_dev = sqrt(phi1_dev);
+            phi2_dev = sqrt(phi2_dev);
+            printf("%f", phi1_avg);
+            fprintf(file, "%f\n", phi1_avg);
+            fprintf(file, "%f\n", phi2_avg);
+            fprintf(file, "%f\n", phi1_dev);
+            fprintf(file, "%f\n", phi2_dev);
+            }
+        } else{
+            x=1;
+        }
+    #endif
+    
     }
+    
     
 }
 
