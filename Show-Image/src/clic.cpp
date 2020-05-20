@@ -18,8 +18,8 @@
 #include <string.h>
 #include <vector>
 #include <queue>
-
-#define TRAIN
+//define only for training
+//#define TRAIN
 
 #ifdef TRAIN
 #define OBJECTS_TO_FIND 1
@@ -391,13 +391,13 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     file = fopen("parameters.txt", "r");
     #endif
     long int moments[OBJECTS_TO_FIND*6];
-    double mu[OBJECTS_TO_FIND*3]; //Only second order centralized moments
-    double nu[OBJECTS_TO_FIND*3]; //Only second order normalized moments
-    double phi[OBJECTS_TO_FIND*2]; //Only first two moment invariant
-    int X[OBJECTS_TO_FIND*3]; //Centroid and angle
+    double mu[OBJECTS_TO_FIND*3]; //Only second order centralized moments. Order: mu20, mu11, mu20
+    double nu[OBJECTS_TO_FIND*3]; //Only second order normalized moments. Order: nu20, nu11, nu20
+    double phi[OBJECTS_TO_FIND*2]; //Only first two moment invariant. Order: phi1, phi2
+    int X[OBJECTS_TO_FIND*3]; //Centroid and angle:
     getRegions(filteredImage, moments);
 
-    for(int i=0; i<OBJECTS_TO_FIND; i++){
+    for(int i=0; i<OBJECTS_TO_FIND; i++){ //calculate m, mu, nu and phi of each object
         
         long int m00 = moments[i*6+0];
         long int m10 = moments[i*6+1];
@@ -439,10 +439,19 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         phi[2*i+1] = phi2;
         float theta = atan2(2*mu11, mu20 - mu02);
         circle(selectionImg, Point((int)x_bar, (int)y_bar), 5, Scalar(0, 0,255), -1, 8, 0);
+
+
+        //TODO: fill the mu, nu and phi arrays. These arrays contain mu, nu and phi of each object found.
+        //Calculate the angle and fill the X array with centroid and angle
+        //Compare the found object's phi's with the parameters file
+        //Draw the visualization window
+        
+        
     }
     //*r = 0;
     imshow("Centroid", selectionImg);
     #ifdef TRAIN
+
         static double phi_1[10];
         static double phi_2[10];
         if(next_sample){
@@ -474,6 +483,8 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             fprintf(file, "%f\n", phi2_avg);
             fprintf(file, "%f\n", phi1_dev);
             fprintf(file, "%f\n", phi2_dev);
+
+            //Order: phi_1 average, phi_2 average, phi_1 deviation, phi_2 deviation
             }
         } else{
             x=1;
