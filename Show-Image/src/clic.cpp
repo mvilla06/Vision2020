@@ -393,6 +393,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     }
     
     #else
+    if(!file)
     file = fopen("parameters.txt", "r");
     #endif
     long int moments[OBJECTS_TO_FIND*6];
@@ -507,7 +508,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         Mat phis(1000, 1000, CV_8UC1, Scalar(0));
         
         o1 = o2 = o3 = o4 = 0;
-
+        
         //Read the parameters from the file
         for(int i = 0; i<OBJECTS_TO_TRAIN*4; i++){
             fscanf(file, "%f", &parameters[i]);
@@ -537,6 +538,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                     switch(index){
                         case 0:
                             o1 = 1;
+                            long_object = i;
                             break;
                         case 1:
                             o2 = 1;
@@ -547,19 +549,18 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                             break;
                         case 3:
                             o4 = 1;
-                            long_object = i;
                             break;
                     }
         }
         
         //Get the correct coordinates
-        if(o1 && o2){
+        if(o1 && o3){           // Espada y escudo
             x = 100; y = 0;
-        }else if(o2 && o3){
+        }else if(o2 && o3){     // Lanza y escudo
             x = 0; y = 0;
-        }else if(o3 && o4){
+        }else if(o1 && o4){     // Espada y casco
             x = 0; y = 100;
-        }else if(o4 && o1){
+        }else if(o2 && o4){     // Lanza y casco
             x = 100; y = 100;
         }
         if(long_object<=0 && long_object<OBJECTS_TO_FIND)
@@ -567,12 +568,33 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         else
             angle = (M_PI/3);
         printf("%f\n", angle);
-        
+
+        double x_max, y_max;
+        x_max = parameters[0];
+        y_max = parameters[1];
+        for(int i=1; i<OBJECTS_TO_TRAIN; i++){
+            if(parameters[4*i]>x_max)
+                x_max = parameters[4*i];
+            if(parameters[4*i+1]>y_max)
+                y_max = parameters[4*i+1];
+        }
+
+        for(int i=0; i<OBJECTS_TO_TRAIN; i++){ //plot trained phis
+            double x = 900 * parameters[4*i]/x_max;
+            double y = 1000 - 900*parameters[4*i+1]/y_max;
+            circle(phis, Point((int)x, (int) y),5, Scalar(255), -1, 8, 0);
+        }
+
+        for(int i = 0; i<OBJECTS_TO_FIND; i++){ //plot found phis
+            double x = 900 * phi[2*i]/x_max;
+            double y = 1000 - 900 * phi[2*i+1]/y_max;
+            circle(phis, Point((int)x, (int) y),5, Scalar(128), -1, 8, 0);
+        }
+        imshow("Phi", phis);
         rectangle(mira, Rect(x, y, 100, 100), Scalar(255), -1, 8, 0);
         arrowedLine(mira, Point(100, 100), Point((int)(100 + cos(angle) * 50), (int)(100 + sin(angle) * 50)), Scalar(128), 1, 8, 0, .1);
         imshow("Mira", mira);
     #endif
-    //fclose(file);
     }
     
     
