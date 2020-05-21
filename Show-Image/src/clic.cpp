@@ -517,7 +517,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         //Calculate the distance from each found object to each trained object
         for(int i = 0; i<OBJECTS_TO_FIND; i++){
             for(int j = 0; j<OBJECTS_TO_TRAIN; j++){
-                distances [i*OBJECTS_TO_FIND + j] = pow((phi[i * 2]- parameters[4 * j])/parameters[ 4 * j + 2], 2) + 
+                distances [i*OBJECTS_TO_TRAIN + j] = pow((phi[i * 2]- parameters[4 * j])/parameters[ 4 * j + 2], 2) + 
                                                     pow((phi[i * 2 + 1]- parameters[ 4 * j + 1])/parameters[4 * j + 3], 2);
             }
         }
