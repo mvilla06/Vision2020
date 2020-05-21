@@ -385,10 +385,13 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     morphologyEx(filteredImage, filteredImage, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size (3,3)), Point(-1, -1) , 3); 
     imshow("Selection", filteredImage);
     if(*r){
-    static FILE * file;
+    static FILE * file = NULL;
     #ifdef TRAIN
-    if(!file)
+    if(!file){
     file = fopen("parameters.txt", "w");
+    printf("Opening file\n");
+    }
+    
     #else
     file = fopen("parameters.txt", "r");
     #endif
@@ -501,6 +504,8 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         int index, long_object;
         int x, y;
         Mat mira(200, 200, CV_8UC1, Scalar(0));
+        Mat phis(1000, 1000, CV_8UC1, Scalar(0));
+        
         o1 = o2 = o3 = o4 = 0;
 
         //Read the parameters from the file
@@ -567,7 +572,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         arrowedLine(mira, Point(100, 100), Point((int)(100 + cos(angle) * 50), (int)(100 + sin(angle) * 50)), Scalar(128), 1, 8, 0, .1);
         imshow("Mira", mira);
     #endif
-    
+    //fclose(file);
     }
     
     
