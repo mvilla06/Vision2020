@@ -500,7 +500,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         static float parameters[4*OBJECTS_TO_TRAIN];
         float distances[OBJECTS_TO_TRAIN*OBJECTS_TO_FIND];
         char o1, o2, o3, o4;
-        float min;
+        
         double angle;
         int index, long_object;
         int x, y;
@@ -524,7 +524,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         
         //Get the minimum distance and set the corresponding flag
         for(int i = 0; i<OBJECTS_TO_FIND; i++){
-            min = distances[ i *OBJECTS_TO_TRAIN ];
+            double min = distances[ i *OBJECTS_TO_TRAIN ];
             index = 0;
             for(int j = 1; j<4; j++){
                 if(distances[i*OBJECTS_TO_TRAIN + j]< min){
@@ -534,7 +534,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             }
 
             //Check if difference with trained object is less than the deviation of the samples
-            if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3])
+            if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3]){
                     switch(index){
                         case 0:
                             o1 = 1;
@@ -551,6 +551,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                             o4 = 1;
                             break;
                     }
+            }
         }
         
         //Get the correct coordinates
