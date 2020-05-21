@@ -20,9 +20,11 @@
 #include <queue>
 //define only for training
 //#define TRAIN
+#define OBJECTS_TO_TRAIN 4
 
 #ifdef TRAIN
 #define OBJECTS_TO_FIND 1
+#define SAMPLES_PER_OBJECT 10
 int samples = 0;
 int next_sample = 0;
 int x = 1;
@@ -299,7 +301,7 @@ int main(int argc, char *argv[])
             #endif
             }
             #ifdef TRAIN
-            if (samples==40)
+            if (samples==OBJECTS_TO_TRAIN*SAMPLES_PER_OBJECT)
             goto end;
             #endif
             
@@ -394,7 +396,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     double mu[OBJECTS_TO_FIND*3]; //Only second order centralized moments. Order: mu20, mu11, mu20
     double nu[OBJECTS_TO_FIND*3]; //Only second order normalized moments. Order: nu20, nu11, nu20
     double phi[OBJECTS_TO_FIND*2]; //Only first two moment invariant. Order: phi1, phi2
-    int X[OBJECTS_TO_FIND*3]; //Centroid and angle:
+    double X[OBJECTS_TO_FIND*3]; //Centroid and angle:
     getRegions(filteredImage, moments);
 
     for(int i=0; i<OBJECTS_TO_FIND; i++){ //calculate m, mu, nu and phi of each object
@@ -406,13 +408,8 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         long int m11 = moments[i*6+4];
         long int m02 = moments[i*6+5];
         
-        /*printf("%d M00: %ld\t",i, m00);
-        printf("%d M10: %ld\t",i, m10);
-        printf("%d M01: %ld\t",i, m01);
-        printf("%d M20: %ld\t",i, m20);
-        printf("%d M11: %ld\t",i, m11);
-        printf("%d M02: %ld\t",i, m02);
-        printf("\n");*/
+        
+        
         float x_bar = m10/m00;
         float y_bar = m01/m00;
         double mu20 = m20 - x_bar*m10;
@@ -423,28 +420,33 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         double nu02 = mu02/(m00*m00);
         double nu11 = mu11/(m00*m00);
 
-        /*printf("%d mu20: %f\t",i, mu20);
-        printf("%d mu02: %f\t",i, mu02);
-        printf("%d mu11: %f\t",i, mu11);
-        printf("%d nu20: %f\t",i, nu20);
-        printf("%d nu02: %f\t",i, nu02);
-        printf("%d nu11: %f\t",i, nu11);
-        printf("\n\n");*/
+        
+        
         double phi1 = nu20 + nu02;
         double phi2 = pow(nu20-nu02, 2)+4*nu11*nu11;
-        /*printf("%f\t", phi1);
-        printf("%f", phi2);
-        printf("\n\n\n");*/
+        
         phi[2*i] = phi1;
         phi[2*i+1] = phi2;
-        float theta = atan2(2*mu11, mu20 - mu02);
+        float theta = atan2(2*mu11, mu20 - mu02)/2;
+        
         circle(selectionImg, Point((int)x_bar, (int)y_bar), 5, Scalar(0, 0,255), -1, 8, 0);
+        arrowedLine(selectionImg, Point((int)x_bar, (int)y_bar), Point((int)(x_bar + 50 * cos(theta)), (int)(y_bar + 50 * sin(theta))),Scalar(0, 0, 255), 1, 8, 0, .1);
 
+        mu[i * 3 + 0] = mu20;
+        mu[i * 3 + 1] = mu11;
+        mu[i * 3 + 2] = mu02;
 
-        //TODO: fill the mu, nu and phi arrays. These arrays contain mu, nu and phi of each object found.
-        //Calculate the angle and fill the X array with centroid and angle
-        //Compare the found object's phi's with the parameters file
-        //Draw the visualization window
+        nu[i * 3 + 0] = nu20;
+        nu[i * 3 + 1] = nu11;
+        nu[i * 3 + 2] = nu02;
+
+        phi[i * 2 + 0] = phi1;
+        phi[i * 2 + 1] = phi2;
+
+        X[i * 3 + 0] =  x_bar;
+        X[i * 3 + 1] =  y_bar;
+        X[i * 3 + 2] =  theta;
+        
         
         
     }
@@ -452,30 +454,30 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     imshow("Centroid", selectionImg);
     #ifdef TRAIN
 
-        static double phi_1[10];
-        static double phi_2[10];
+        static double phi_1[SAMPLES_PER_OBJECT];
+        static double phi_2[SAMPLES_PER_OBJECT];
         if(next_sample){
             next_sample = 0;
-            phi_1 [samples%10]= phi[0];
-            phi_2 [samples%10]= phi[1];
+            phi_1 [samples%SAMPLES_PER_OBJECT]= phi[0];
+            phi_2 [samples%SAMPLES_PER_OBJECT]= phi[1];
             samples++;
         }
         
-        if(samples%10==0 && samples!=0 ){
+        if(samples%SAMPLES_PER_OBJECT==0 && samples!=0 ){
             if(x){
             x = 0;
             destroyAllWindows();
             double phi1_avg, phi2_avg, phi1_dev, phi2_dev;
-            for(int i=0; i<10; i++){
-                phi1_avg+=phi_1[i]/10;
-                phi2_avg+=phi_2[i]/10;
+            for(int i=0; i<SAMPLES_PER_OBJECT; i++){
+                phi1_avg+=phi_1[i]/SAMPLES_PER_OBJECT;
+                phi2_avg+=phi_2[i]/SAMPLES_PER_OBJECT;
             }
-            for(int i=0; i<10; i++){
+            for(int i=0; i<SAMPLES_PER_OBJECT; i++){
                 phi1_dev += pow(phi_1[i]-phi1_avg, 2);
                 phi2_dev += pow(phi_2[i]-phi2_avg, 2);
             }
-            phi1_dev /= 10;
-            phi2_dev /=10;
+            phi1_dev /= SAMPLES_PER_OBJECT;
+            phi2_dev /=SAMPLES_PER_OBJECT;
             phi1_dev = sqrt(phi1_dev);
             phi2_dev = sqrt(phi2_dev);
             printf("%f", phi1_avg);
@@ -489,6 +491,78 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         } else{
             x=1;
         }
+        
+    #else
+        static float parameters[4*OBJECTS_TO_TRAIN];
+        float distances[OBJECTS_TO_TRAIN*OBJECTS_TO_FIND];
+        char o1, o2, o3, o4;
+        float min;
+        double angle;
+        int index, long_object;
+        int x, y;
+        Mat mira(200, 200, CV_8UC1, Scalar(0));
+        o1 = o2 = o3 = o4 = 0;
+
+        //Read the parameters from the file
+        for(int i = 0; i<OBJECTS_TO_TRAIN*4; i++){
+            fscanf(file, "%f", &parameters[i]);
+        }
+
+        //Calculate the distance from each found object to each trained object
+        for(int i = 0; i<OBJECTS_TO_FIND; i++){
+            for(int j = 0; j<OBJECTS_TO_TRAIN; j++){
+                distances [i*OBJECTS_TO_FIND + j] = pow((phi[i * 2]- parameters[4 * j])/parameters[ 4 * j + 2], 2) + 
+                                                    pow((phi[i * 2 + 1]- parameters[ 4 * j + 1])/parameters[4 * j + 3], 2);
+            }
+        }
+        
+        //Get the minimum distance and set the corresponding flag
+        for(int i = 0; i<OBJECTS_TO_FIND; i++){
+            min = distances[ i *OBJECTS_TO_TRAIN ];
+            index = 0;
+            for(int j = 1; j<4; j++){
+                if(distances[i*OBJECTS_TO_TRAIN + j]< min){
+                    min = distances[i * OBJECTS_TO_TRAIN + j];
+                    index = j;
+                }
+            }
+            switch(index){
+                case 0:
+                    o1 = 1;
+                    break;
+                case 1:
+                    o2 = 1;
+                    long_object = i;
+                    break;
+                case 2:
+                    o3 = 1;
+                    break;
+                case 3:
+                    o4 = 1;
+                    long_object = i;
+                    break;
+            }
+        }
+        
+        //Get the correct coordinates
+        if(o1 && o2){
+            x = 100; y = 0;
+        }else if(o2 && o3){
+            x = 0; y = 0;
+        }else if(o3 && o4){
+            x = 0; y = 100;
+        }else if(o4 && o1){
+            x = 100; y = 100;
+        }
+        if(long_object<=0 && long_object<OBJECTS_TO_FIND)
+            angle = X[long_object*3+2];
+        else
+            angle = (M_PI/3);
+        printf("%f\n", angle);
+        
+        rectangle(mira, Rect(x, y, 100, 100), Scalar(255), -1, 8, 0);
+        arrowedLine(mira, Point(100, 100), Point((int)(100 + cos(angle) * 50), (int)(100 + sin(angle) * 50)), Scalar(128), 1, 8, 0, .1);
+        imshow("Mira", mira);
     #endif
     
     }
