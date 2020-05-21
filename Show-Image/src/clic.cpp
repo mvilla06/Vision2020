@@ -559,9 +559,9 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             x = 100; y = 0;
         }else if(o2 && o3){     // Lanza y escudo
             x = 0; y = 0;
-        }else if(o1 && o4){     // Espada y casco
-            x = 0; y = 100;
         }else if(o2 && o4){     // Lanza y casco
+            x = 0; y = 100;
+        }else if(o1 && o4){     // Espada y casco
             x = 100; y = 100;
         }
         if(long_object<=0 && long_object<OBJECTS_TO_FIND)
