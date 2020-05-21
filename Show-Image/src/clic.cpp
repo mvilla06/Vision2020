@@ -390,6 +390,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     if(!file)
     file = fopen("parameters.txt", "w");
     #else
+    if(!file)
     file = fopen("parameters.txt", "r");
     #endif
     long int moments[OBJECTS_TO_FIND*6];
@@ -532,6 +533,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                     switch(index){
                         case 0:
                             o1 = 1;
+                            long_object = i;
                             break;
                         case 1:
                             o2 = 1;
@@ -542,19 +544,18 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                             break;
                         case 3:
                             o4 = 1;
-                            long_object = i;
                             break;
                     }
         }
         
         //Get the correct coordinates
-        if(o1 && o2){
+        if(o1 && o3){           // Espada y escudo
             x = 100; y = 0;
-        }else if(o2 && o3){
+        }else if(o2 && o3){     // Lanza y escudo
             x = 0; y = 0;
-        }else if(o3 && o4){
+        }else if(o1 && o4){     // Espada y casco
             x = 0; y = 100;
-        }else if(o4 && o1){
+        }else if(o2 && o4){     // Lanza y casco
             x = 100; y = 100;
         }
         if(long_object<=0 && long_object<OBJECTS_TO_FIND)
@@ -567,7 +568,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         arrowedLine(mira, Point(100, 100), Point((int)(100 + cos(angle) * 50), (int)(100 + sin(angle) * 50)), Scalar(128), 1, 8, 0, .1);
         imshow("Mira", mira);
     #endif
-    
+
     }
     
     
