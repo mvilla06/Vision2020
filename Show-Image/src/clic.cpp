@@ -505,7 +505,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         int index, long_object;
         int x, y;
         Mat mira(200, 200, CV_8UC1, Scalar(0));
-        Mat phis(1000, 1000, CV_8UC1, Scalar(0));
+        Mat phis(500, 500, CV_8UC1, Scalar(0));
         
         o1 = o2 = o3 = o4 = 0;
         
@@ -580,14 +580,14 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         }
 
         for(int i=0; i<OBJECTS_TO_TRAIN; i++){ //plot trained phis
-            double x = 900 * parameters[4*i]/x_max;
-            double y = 1000 - 900*parameters[4*i+1]/y_max;
+            double x = 450 * parameters[4*i]/x_max;
+            double y = 500 - 450 * parameters[4*i+1]/y_max;
             circle(phis, Point((int)x, (int) y),5, Scalar(255), -1, 8, 0);
         }
 
         for(int i = 0; i<OBJECTS_TO_FIND; i++){ //plot found phis
-            double x = 900 * phi[2*i]/x_max;
-            double y = 1000 - 900 * phi[2*i+1]/y_max;
+            double x = 450 * phi[2*i]/x_max;
+            double y = 500 - 450 * phi[2*i+1]/y_max;
             circle(phis, Point((int)x, (int) y),5, Scalar(128), -1, 8, 0);
         }
         imshow("Phi", phis);
