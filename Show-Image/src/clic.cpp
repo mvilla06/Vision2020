@@ -526,22 +526,25 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                     index = j;
                 }
             }
-            switch(index){
-                case 0:
-                    o1 = 1;
-                    break;
-                case 1:
-                    o2 = 1;
-                    long_object = i;
-                    break;
-                case 2:
-                    o3 = 1;
-                    break;
-                case 3:
-                    o4 = 1;
-                    long_object = i;
-                    break;
-            }
+
+            //Check if difference with trained object is less than the deviation of the samples
+            if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3])
+                    switch(index){
+                        case 0:
+                            o1 = 1;
+                            break;
+                        case 1:
+                            o2 = 1;
+                            long_object = i;
+                            break;
+                        case 2:
+                            o3 = 1;
+                            break;
+                        case 3:
+                            o4 = 1;
+                            long_object = i;
+                            break;
+                    }
         }
         
         //Get the correct coordinates
