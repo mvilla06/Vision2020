@@ -36,8 +36,11 @@ using namespace cv;
 using namespace std;
 
 // Here we will store points
-Point p(0, 0), q(0, 0);
+Point p(0, 0), q(0, 0), obst_p(0, 0), obst_q(0,0);
 unsigned char thVal = 0;
+
+Mat parkingLotImage;
+int newObstacle = 0, lastObstacle = 0;
 
 void getRegions(Mat &image, long int * ordinary_moments ){
     Mat color(image.rows, image.cols, CV_8UC1, Scalar(0));
@@ -101,6 +104,36 @@ void getRegions(Mat &image, long int * ordinary_moments ){
     
 }
 
+// Get the obstacles from the parking lot
+void obtainObstacles() {
+    char x;
+
+    Mat WorkingSpace(parkingLotImage.rows, parkingLotImage.cols, CV_8UC1, Scalar(0));
+
+    while (!lastObstacle) {
+        if (newObstacle) {
+            int obstWidth = obst_q.x - obst_p.x;
+            int obstHheight = obst_q.y - obst_p.y;
+            rectangle(parkingLotImage, Rect(obst_p.x, obst_p.y, obstWidth, obstHheight), Scalar(255), -1, 8, 0);
+            newObstacle = 0;
+            imshow("Parking Lot", parkingLotImage);
+
+            for (int x = obst_p.x; x < obst_q.x; x++) {
+                for (int y = obst_p.y; y < obst_q.y; y++) {
+                    WorkingSpace.at<uchar>(y, x) = 255;
+                }
+            }
+            imshow("Working Space", WorkingSpace);
+
+        }
+
+        x = waitKey(3);
+        if (x == 'z') {
+            lastObstacle = 1;
+        }
+    }  
+}
+
 
 /* This is the callback that will only display mouse coordinates */
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param);
@@ -120,6 +153,9 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
         break;
     }
 }
+
+void obstacleCaptureCallback(int event, int x, int y, int flags, void *param);
+
 void histogram(const Mat &image, char t, unsigned char *threshold, char o, char colorSpace);
 void destroyHistogram()
 {
@@ -144,6 +180,8 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r);
 
 
 
+
+
 int main(int argc, char *argv[])
 {
     /* First, open camera device */
@@ -158,8 +196,16 @@ int main(int argc, char *argv[])
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
 
+    //Parking lot image
+    parkingLotImage = imread("Car-Parking-03.jpg", CV_LOAD_IMAGE_COLOR);
+    imshow("Parking Lot", parkingLotImage);
+    setMouseCallback("Parking Lot", obstacleCaptureCallback);
+
+    obtainObstacles();
+
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
+    // o -> ROI color selection, f -> filter, r-> get regions
     char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, f = 0, r = 0;
     char colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
     char x;
@@ -375,7 +421,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             else
             {
                 
-                    filteredImage.at<uchar>(r, c) = 0xFF;
+                filteredImage.at<uchar>(r, c) = 0xFF;
             }
         }
     }
@@ -536,22 +582,22 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
 
             //Check if difference with trained object is less than the deviation of the samples
             //if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3])
-                    switch(index){
-                        case 0:
-                            o1 = 1;
-                            long_object = i;
-                            break;
-                        case 1:
-                            o2 = 1;
-                            long_object = i;
-                            break;
-                        case 2:
-                            o3 = 1;
-                            break;
-                        case 3:
-                            o4 = 1;
-                            break;
-                    }
+            switch(index){
+                case 0:
+                    o1 = 1;
+                    long_object = i;
+                    break;
+                case 1:
+                    o2 = 1;
+                    long_object = i;
+                    break;
+                case 2:
+                    o3 = 1;
+                    break;
+                case 3:
+                    o4 = 1;
+                    break;
+            }
 
         }
         
@@ -623,6 +669,24 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
         q.x = x;
         q.y = y;
 
+        break;
+    }
+}
+
+void obstacleCaptureCallback(int event, int x, int y, int flags, void *param) {
+    switch (event) {
+    case CV_EVENT_LBUTTONDOWN:
+        obst_p.x = x;
+        obst_p.y = y;
+        obst_q.x = x;
+        obst_q.y = y;
+        break;
+    case CV_EVENT_MOUSEMOVE:
+        break;
+    case CV_EVENT_LBUTTONUP:
+        obst_q.x = x;
+        obst_q.y = y;
+        newObstacle = 1;
         break;
     }
 }
