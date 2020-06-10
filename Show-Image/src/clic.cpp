@@ -94,6 +94,7 @@ void getRegions(Mat &image, long int * ordinary_moments ){
             }
 
         }
+        //printf("m1=%ld\nm2=%ld\nm3=%ld\nm4=%ld\nm5=%ld\nm6=%ld\n", ordinary_moments[0], ordinary_moments[1], ordinary_moments[2], ordinary_moments[3], ordinary_moments[4], ordinary_moments[5]);
         
     }
     imshow("Color", color);
@@ -223,13 +224,10 @@ int main(int argc, char *argv[])
             if (h)
                 histogram(currentImage, t, threshold, o, colorSpace);
             else
-            {
-                
-                        
-                    destroyHistogram();   
-                
-                
+            {        
+                destroyHistogram();      
             }
+
 
             imshow("Image", originalImage);
             imshow("Processed Image", currentImage);
