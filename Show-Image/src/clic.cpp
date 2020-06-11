@@ -213,8 +213,8 @@ void obtainObstacles(Mat * WorkingSpace) {
 
     }
     imshow("w", *WorkingSpace);
-    morphologyEx(*WorkingSpace, *WorkingSpace, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size (3, 3)), Point(-1, -1) , 1); 
-    dilate(*WorkingSpace, *WorkingSpace, getStructuringElement(MORPH_ELLIPSE, Size (5, 5)), Point(-1, -1) , 2 , 0, 0xffff);
+    morphologyEx(*WorkingSpace, *WorkingSpace, MORPH_OPEN, getStructuringElement(MORPH_RECT, Size (5, 5)), Point(-1, -1) , 1); 
+    dilate(*WorkingSpace, *WorkingSpace, getStructuringElement(MORPH_ELLIPSE, Size (6, 6)), Point(-1, -1) , 2 , 0, 0xffff);
     
     imshow("Working Space", *WorkingSpace);
 
