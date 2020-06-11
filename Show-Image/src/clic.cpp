@@ -282,7 +282,7 @@ void obtainPotentialFields(Mat * WorkingSpace) {
 
             }
         }
-
+        count++;
         //cout << "Count = " << count << endl;
     }
 
@@ -447,7 +447,7 @@ int main(int argc, char *argv[])
                 destroyWindow("Selection");
 
             if (route) {
-                findRoute(3, &WorkingSpace);
+                findRoute(4, &WorkingSpace);
                 route = ~route;
             }
 
@@ -854,51 +854,54 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
 
 void findRoute(int quadrant, Mat * WorkingSpace){
     Point currentPoint(0,0);
-    int lastDirection = 0; // 1=N, 2=O, 3=S, 4=E
+    int lastDirection = 0; // 0=N, 1=O, 2=S, 3=E
     int nextDirection = 0;
     unsigned short directions[4];
 
     Point vecinos[4] = {Point(0,1), Point(-1,0), Point(0,-1), Point(1,0)};
 
     //quadrant1(323, 261), quadrant2(81, 251), quadrant3(81, 445), quadrant4(323, 459);
-
-    if (quadrant == 1) {
-        currentPoint = Point(323, 361);
+    printf("%d\n", quadrant);
+    switch(quadrant){
+        case 1:
+            currentPoint = Point(323, 459);
+            break;
+        case 2:
+            currentPoint = Point(81, 251);
+            break;
+        case 3:
+            currentPoint = Point(81, 445);
+            break;
+        case 4:
+            currentPoint = Point(323, 459);
+            break;
+        default:
+            return;
     }
-    else if (quadrant == 2) {
-        currentPoint = Point(81, 251);
-    }
-    else if (quadrant == 3) {
-        currentPoint = Point(81, 445);
-    }
-    else {
-        currentPoint = Point(323, 459);
-    }
+    
+    printf("%d, %d\n", currentPoint.x, currentPoint.y);
+    circle(parkingLotImage, currentPoint, 10, Scalar(255,0,0), -1, 8, 0);
 
     while ((*WorkingSpace).at<ushort>(currentPoint) != 0) {
         rectangle(parkingLotImage, Rect(currentPoint.x, currentPoint.y, 5, 5), Scalar(255), -1, 8, 0);
         //(*WorkingSpace).at<ushort>(currentPoint) = 0xffff;
 
         //cout << "Current point is: " << currentPoint.x << ", " << currentPoint.y << endl;
-
-        directions[0] = (*WorkingSpace).at<ushort>(currentPoint + Point(0,1));
-        //cout << "North: " << directions[0] << endl;
-        directions[1] = (*WorkingSpace).at<ushort>(currentPoint + Point(-1,0));
-        //cout << "West: " << directions[1] << endl;
-        directions[2] = (*WorkingSpace).at<ushort>(currentPoint + Point(0,-1));
-        //cout << "South: " << directions[2] << endl;
-        directions[3] = (*WorkingSpace).at<ushort>(currentPoint + Point(1,0));
-        //cout << "East: " << directions[3] << endl;
-
-        int minDistance = directions[0];
+        for(int i = 0; i<4; i++)
+        directions[i] = (*WorkingSpace).at<ushort>(currentPoint + vecinos[i]);
+        //unsigned short actual = (*WorkingSpace).at<ushort>(currentPoint);
+        unsigned short minDistance = directions[0];
         for (int i = 0; i < 4; i++) {
             if (minDistance > directions[i]) {
+                //printf("%d   %d\n", actual, directions[i]);
+            //if(actual - directions[i] == 1){
                 minDistance = directions[i];
                 nextDirection = i;
             }
         }
 
-        cout << "Distancia a destino: " << directions[nextDirection] << endl;
+        //printf("%d    %d\n", actual, nextDirection);
+        //cout << "Distancia a destino: " << directions[nextDirection] << endl;
 
         currentPoint = currentPoint + vecinos[nextDirection];
 
@@ -912,10 +915,11 @@ void findRoute(int quadrant, Mat * WorkingSpace){
         */
         
 
-        imshow("Parking Lot", parkingLotImage);
-        imshow("Working Space", *WorkingSpace);
+        
 
     }
+    imshow("Parking Lot", parkingLotImage);
+        imshow("Working Space", *WorkingSpace);
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
