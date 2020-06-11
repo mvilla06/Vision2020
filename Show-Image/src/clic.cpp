@@ -264,7 +264,7 @@ void obtainPotentialFields(Mat * WorkingSpace) {
         for(int i = 0; i<4; i++){
             Point currentPoint = punto + vecinos[i];
             if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < 400 && currentPoint.y < 610 &&
-                (*WorkingSpace).at<ushort>(currentPoint) != 0xffff && currentPoint != Pf) {
+                (*WorkingSpace).at<ushort>(currentPoint) == 0 && currentPoint != Pf) {
                 lista.push(currentPoint);
                 //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
                 (*WorkingSpace).at<ushort>(currentPoint) = count;
@@ -449,7 +449,9 @@ int main(int argc, char *argv[])
 
             if (route) {
                 // Calculate the Potential Fields
+                cout << "About to obtainPotentialFields" << endl;
                 obtainPotentialFields(&WorkingSpace);
+                cout << "Potential fields obtained" << endl;
                 findRoute(startingQuadrant, startingAngle, &WorkingSpace);
                 route = ~route;
             }
@@ -866,7 +868,7 @@ void findRoute(int quadrant, double angle, Mat * WorkingSpace){
     //quadrant1(323, 261), quadrant2(81, 251), quadrant3(81, 445), quadrant4(323, 459);
 
     if (quadrant == 1) {
-        currentPoint = Point(323, 361);
+        currentPoint = Point(323, 261);
     }
     else if (quadrant == 2) {
         currentPoint = Point(81, 251);
@@ -882,26 +884,32 @@ void findRoute(int quadrant, double angle, Mat * WorkingSpace){
         rectangle(parkingLotImage, Rect(currentPoint.x, currentPoint.y, 5, 5), Scalar(255), -1, 8, 0);
         //(*WorkingSpace).at<ushort>(currentPoint) = 0xffff;
 
-        //cout << "Current point is: " << currentPoint.x << ", " << currentPoint.y << endl;
+        cout << "Current point is: " << currentPoint.x << ", " << currentPoint.y << endl;
 
         directions[0] = (*WorkingSpace).at<ushort>(currentPoint + Point(0,1));
-        //cout << "North: " << directions[0] << endl;
+        cout << "North: " << directions[0] << endl;
         directions[1] = (*WorkingSpace).at<ushort>(currentPoint + Point(-1,0));
-        //cout << "West: " << directions[1] << endl;
+        cout << "West: " << directions[1] << endl;
         directions[2] = (*WorkingSpace).at<ushort>(currentPoint + Point(0,-1));
-        //cout << "South: " << directions[2] << endl;
+        cout << "South: " << directions[2] << endl;
         directions[3] = (*WorkingSpace).at<ushort>(currentPoint + Point(1,0));
-        //cout << "East: " << directions[3] << endl;
+        cout << "East: " << directions[3] << endl;
 
-        int minDistance = directions[0];
+        unsigned short minDistance = directions[0];
+        nextDirection = 0;
         for (int i = 0; i < 4; i++) {
-            if (minDistance > directions[i]) {
+            if ((unsigned short)minDistance > (unsigned short)directions[i]) {
                 minDistance = directions[i];
                 nextDirection = i;
             }
         }
 
-        //cout << "Distancia a destino: " << directions[nextDirection] << endl;
+        unsigned short ex1 = 100, ex2 = 65535;
+        if (ex1 > ex2) {
+            cout << "100 > 65535" << endl; 
+        }
+
+        cout << "Distancia a destino: " << directions[nextDirection] << endl;
 
         currentPoint = currentPoint + vecinos[nextDirection];
 
