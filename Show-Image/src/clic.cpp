@@ -346,6 +346,14 @@ void clearRouteInWorkingSpace(Mat * WorkingSpace) {
     }
 }
 
+void drawRectangle(Point p, Point q, Mat * ws) {
+    for (int i = p.x; i <= q.x; i++) {
+        for (int j = p.y; j <= q.y; j++) {
+            (*ws).at<ushort>(Point(i,j)) = 0xffff;
+        }
+    }
+}
+
 
 
 int main(int argc, char *argv[])
@@ -372,6 +380,7 @@ int main(int argc, char *argv[])
     imshow("Parking Lot", parkingLotImage);
     // Obtain the Working Space
     Mat WorkingSpace(parkingLotImage.rows, parkingLotImage.cols, CV_16UC1, Scalar(0xffff));
+    Mat WorkingSpaceWithDirection(parkingLotImage.rows, parkingLotImage.cols, CV_16UC1, Scalar(0xffff));
     obtainObstacles(&WorkingSpace);
 
     // Obtain destination point
@@ -462,9 +471,51 @@ int main(int argc, char *argv[])
                 // Calculate the Potential Fields
                 //cout << "About to obtainPotentialFields" << endl;
                 clearRouteInWorkingSpace(&WorkingSpace);
-                obtainPotentialFields(&WorkingSpace);
+
+                // Put walls depending on angle
+                WorkingSpaceWithDirection = WorkingSpace.clone();
+                switch(startingQuadrant) {
+                case 1:
+                    if (startingAngle > 0) {
+                        drawRectangle(Point(288,233), Point(294,281), &WorkingSpaceWithDirection);
+                    }
+                    else {
+                        drawRectangle(Point(294,281), Point(355,286), &WorkingSpaceWithDirection);
+                    }
+                    break;
+                case 2:
+                    if (startingAngle > 0) {
+                        drawRectangle(Point(47,269), Point(121,281), &WorkingSpaceWithDirection);
+                    }
+                    else {
+                        drawRectangle(Point(111,223), Point(121,281), &WorkingSpaceWithDirection);
+                    }
+                    break;
+                case 3:
+                    if (startingAngle > 0) {
+                        drawRectangle(Point(108,422), Point(118,471), &WorkingSpaceWithDirection);
+                    }
+                    else {
+                        drawRectangle(Point(54,410), Point(108,422), &WorkingSpaceWithDirection);
+                    }
+                    break;
+                case 4:
+                    if (startingAngle > 0) {
+                        drawRectangle(Point(295,434), Point(350,435), &WorkingSpaceWithDirection);
+                    }
+                    else {
+                        drawRectangle(Point(295,434), Point(296,480), &WorkingSpaceWithDirection);
+                    }
+                    break;
+                }
+
+                drawRectangle(Point(11,462), Point(352,483), &WorkingSpaceWithDirection);
+
+                imshow("WorkingSpace With directions", WorkingSpaceWithDirection);
+
+                obtainPotentialFields(&WorkingSpaceWithDirection);
                 //cout << "Potential fields obtained" << endl;
-                findRoute(startingQuadrant, startingAngle, &WorkingSpace);
+                findRoute(startingQuadrant, startingAngle, &WorkingSpaceWithDirection);
                 route = ~route;
             }
 
