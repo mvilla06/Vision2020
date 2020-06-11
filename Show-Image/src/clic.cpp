@@ -41,6 +41,8 @@ unsigned char thVal = 0;
 
 Mat parkingLotImage;
 int newObstacle = 0, lastObstacle = 0;
+int radiusCapture = 1, robotRadius = 0;
+Point robot_p(0,0), robot_q(0,0);
 
 void getRegions(Mat &image, long int * ordinary_moments ){
     Mat color(image.rows, image.cols, CV_8UC1, Scalar(0));
@@ -113,16 +115,22 @@ void obtainObstacles() {
     while (!lastObstacle) {
         if (newObstacle) {
             int obstWidth = obst_q.x - obst_p.x;
-            int obstHheight = obst_q.y - obst_p.y;
-            rectangle(parkingLotImage, Rect(obst_p.x, obst_p.y, obstWidth, obstHheight), Scalar(255), -1, 8, 0);
+            int obstHeight = obst_q.y - obst_p.y;
+            rectangle(parkingLotImage, Rect(obst_p.x, obst_p.y, obstWidth, obstHeight), Scalar(255), -1, 8, 0);
             newObstacle = 0;
             imshow("Parking Lot", parkingLotImage);
 
-            for (int x = obst_p.x; x < obst_q.x; x++) {
-                for (int y = obst_p.y; y < obst_q.y; y++) {
-                    WorkingSpace.at<uchar>(y, x) = 255;
-                }
-            }
+            // Building working space and enlargening of obstacles
+            rectangle(WorkingSpace, Rect(obst_p.x, obst_p.y, obstWidth, obstHeight), Scalar(255), -1, 8, 0);
+            rectangle(WorkingSpace, Rect(obst_p.x, obst_p.y - robotRadius, obstWidth, robotRadius), Scalar(255), -1, 8, 0);
+            rectangle(WorkingSpace, Rect(obst_p.x - robotRadius, obst_p.y, robotRadius, obstHeight), Scalar(255), -1, 8, 0);
+            rectangle(WorkingSpace, Rect(obst_p.x, obst_p.y + obstHeight, obstWidth, robotRadius), Scalar(255), -1, 8, 0);
+            rectangle(WorkingSpace, Rect(obst_p.x + obstWidth, obst_p.y, robotRadius, obstHeight), Scalar(255), -1, 8, 0);
+            circle(WorkingSpace, Point(obst_p.x, obst_p.y), robotRadius, Scalar(255), -1, 8, 0);
+            circle(WorkingSpace, Point(obst_p.x, obst_p.y + obstHeight), robotRadius, Scalar(255), -1, 8, 0);
+            circle(WorkingSpace, Point(obst_q.x, obst_q.y), robotRadius, Scalar(255), -1, 8, 0);
+            circle(WorkingSpace, Point(obst_q.x, obst_q.y - obstHeight), robotRadius, Scalar(255), -1, 8, 0);
+
             imshow("Working Space", WorkingSpace);
 
         }
@@ -676,17 +684,37 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
 void obstacleCaptureCallback(int event, int x, int y, int flags, void *param) {
     switch (event) {
     case CV_EVENT_LBUTTONDOWN:
-        obst_p.x = x;
-        obst_p.y = y;
-        obst_q.x = x;
-        obst_q.y = y;
+        if (radiusCapture) {
+            robot_p.x = x;
+            robot_p.y = y;
+            robot_q.x = x;
+            robot_q.y = y;
+        }
+        else {
+            obst_p.x = x;
+            obst_p.y = y;
+            obst_q.x = x;
+            obst_q.y = y;
+        }
         break;
     case CV_EVENT_MOUSEMOVE:
         break;
     case CV_EVENT_LBUTTONUP:
-        obst_q.x = x;
-        obst_q.y = y;
-        newObstacle = 1;
+        if (radiusCapture) {
+            robot_q.x = x;
+            robot_q.y = y;
+            radiusCapture = 0;
+
+            int robotWidth = robot_q.x - robot_p.x;
+            int robotHeight = robot_q.y - robot_p.y;
+
+            robotRadius = (robotWidth < robotHeight) ? robotWidth / 2 : robotHeight / 2;
+        }
+        else {
+            obst_q.x = x;
+            obst_q.y = y;
+            newObstacle = 1;
+        }
         break;
     }
 }
