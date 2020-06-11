@@ -183,7 +183,7 @@ void obtainPotentialFields(Mat * WorkingSpace) {
         }
 
         count++;
-        cout << "Count = " << count << endl;
+        //cout << "Count = " << count << endl;
     }
 
     imshow("Working Space", *WorkingSpace);
