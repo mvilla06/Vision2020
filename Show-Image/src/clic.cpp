@@ -876,8 +876,8 @@ void findRoute(int quadrant, Mat * WorkingSpace){
     }
 
     while ((*WorkingSpace).at<ushort>(currentPoint) != 0) {
-        rectangle(parkingLotImage, Rect(currentPoint.x, currentPoint.y, robotRadius, robotRadius), Scalar(150), -1, 8, 0);
-        (*WorkingSpace).at<ushort>(currentPoint) = 0xffff;
+        rectangle(parkingLotImage, Rect(currentPoint.x, currentPoint.y, 5, 5), Scalar(255), -1, 8, 0);
+        //(*WorkingSpace).at<ushort>(currentPoint) = 0xffff;
 
         //cout << "Current point is: " << currentPoint.x << ", " << currentPoint.y << endl;
 
@@ -890,11 +890,15 @@ void findRoute(int quadrant, Mat * WorkingSpace){
         directions[3] = (*WorkingSpace).at<ushort>(currentPoint + Point(1,0));
         //cout << "East: " << directions[3] << endl;
 
-        for (int i = 0; i < 3; i++) {
-            nextDirection = (directions[i] < directions[i+1]) ? i : i + 1;
+        int minDistance = directions[0];
+        for (int i = 0; i < 4; i++) {
+            if (minDistance > directions[i]) {
+                minDistance = directions[i];
+                nextDirection = i;
+            }
         }
 
-        //cout << "Distancia a destino: " << directions[nextDirection] << endl;
+        cout << "Distancia a destino: " << directions[nextDirection] << endl;
 
         currentPoint = currentPoint + vecinos[nextDirection];
 
@@ -906,6 +910,7 @@ void findRoute(int quadrant, Mat * WorkingSpace){
             }
         }
         */
+        
 
         imshow("Parking Lot", parkingLotImage);
         imshow("Working Space", *WorkingSpace);
