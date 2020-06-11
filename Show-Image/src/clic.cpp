@@ -535,9 +535,9 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                     index = j;
                 }
             }
-
+            
             //Check if difference with trained object is less than the deviation of the samples
-            if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3]){
+            //if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3]){
                     switch(index){
                         case 0:
                             o1 = 1;
@@ -554,9 +554,11 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
                             o4 = 1;
                             break;
                     }
-            }
+            //}
         }
         
+
+        //printf("%d\t%d\t%d\t%d\n", o1, o2, o3, o4);
         //Get the correct coordinates
         if(o1 && o3){           // Espada y escudo
             x = 100; y = 0;
@@ -567,7 +569,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         }else if(o1 && o4){     // Espada y casco
             x = 100; y = 100;
         }
-        if(long_object<=0 && long_object<OBJECTS_TO_FIND)
+        if(long_object>=0 && long_object<OBJECTS_TO_FIND)
             angle = X[long_object*3+2];
         else
             angle = (M_PI/3);
