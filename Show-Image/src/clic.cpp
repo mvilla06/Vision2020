@@ -48,6 +48,9 @@ int newObstacle = 0, lastObstacle = 0;
 int radiusCapture = 1, robotRadius = 0;
 int finalPointCapture = 0;
 
+int startingQuadrant = 0;
+double startingAngle = 0;
+
 void getRegions(Mat &image, long int * ordinary_moments ){
     Mat color(image.rows, image.cols, CV_8UC1, Scalar(0));
     
@@ -162,27 +165,51 @@ void obtainPotentialFields(Mat * WorkingSpace) {
 
     queue<Point> lista;
     lista.push(Pf);
+    lista.push(Point(-1, -1)); // Marca
     //cout << "push " << Pf.x << ", " << Pf.y << endl;
     //(*WorkingSpace).at<uchar>(Pf) = 0x00;
     Point punto;
+
+    //cout << "Al punto final " << Pf.x << ", " << Pf.y << "se le da el valor de:" << 
+     //   (*WorkingSpace).at<ushort>(punto) << endl;
 
     while(lista.empty() == false) {
         punto.x = lista.front().x;
         punto.y = lista.front().y;
         lista.pop();
+
+        if (punto.x == -1) {
+            if (lista.empty()) {
+                break;
+            }
+            lista.push(Point(-1, -1)); // Marca
+            count++;
+            continue;
+        }
         //cout << "pop " << punto.x << ", " << punto.y << endl;
 
         for(int i = 0; i<4; i++){
             Point currentPoint = punto + vecinos[i];
             if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < 400 && currentPoint.y < 610 &&
-                (*WorkingSpace).at<ushort>(currentPoint) == 0) {
+                (*WorkingSpace).at<ushort>(currentPoint) == 0 && currentPoint != Pf) {
                 lista.push(currentPoint);
                 //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
                 (*WorkingSpace).at<ushort>(currentPoint) = count;
+                //cout << "Al punto " << currentPoint.x << ", " << currentPoint.y << "se le da el valor de:" <<
+                //(*WorkingSpace).at<ushort>(currentPoint) << endl;
+
+                /*
+                while (true) {
+                    int x = waitKey(3);
+                    if (x == 'x') {
+                        break;
+                    }
+                }
+                */
+
             }
         }
 
-        count++;
         //cout << "Count = " << count << endl;
     }
 
@@ -233,7 +260,7 @@ void draw(Mat image, char t, char *o, unsigned char *threshold);
 
 void selection(Mat image, unsigned char *threshold, Mat original, char * r);
 
-
+void findRoute(int quadrant, /*double angle, */ Mat * WorkingSpace);
 
 
 
@@ -284,6 +311,7 @@ int main(int argc, char *argv[])
     // v -> Convert to HSV
     // o -> ROI color selection, f -> filter, r-> get regions
     char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, f = 0, r = 0;
+    char route = 0;
     char colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
     char x;
     camera >> currentImage;
@@ -342,6 +370,11 @@ int main(int argc, char *argv[])
             }
             else
                 destroyWindow("Selection");
+
+            if (route) {
+                findRoute(3, &WorkingSpace);
+                route = ~route;
+            }
 
             //Show histograms
             if (h)
@@ -407,6 +440,9 @@ int main(int argc, char *argv[])
                 break;
             case 'f': //Filter image
                 f = ~f;
+                break;
+            case 'k':
+                route = ~route;
                 break;
             case 'r': //Get regions
                 if(r){
@@ -678,23 +714,31 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
 
         }
         
+        int quadrant = 0;
         //Get the correct coordinates
         if(o1 && o3){           // Espada y escudo
             x = 100; y = 0;
+            quadrant = 1;
         }else if(o2 && o3){     // Lanza y escudo
             x = 0; y = 0;
+            quadrant = 2;
         }else if(o2 && o4){     // Lanza y casco
             x = 0; y = 100;
+            quadrant = 3;
         }else if(o1 && o4){     // Espada y casco
             x = 100; y = 100;
+            quadrant = 4;
         }
         if(long_object>=0 && long_object<OBJECTS_TO_FIND)
             angle = X[long_object*3+2];
         else
             angle = (M_PI/3);
+
+        /*
         printf("%f\n", angle);
         printf("Long object = %d\n", long_object);
         printf("o1 = %d\no2 = %d\no3 = %d\no4 = %d\n", o1, o2, o3, o4);
+        */
 
         double x_max, y_max;
         x_max = parameters[0];
@@ -721,10 +765,75 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         rectangle(mira, Rect(x, y, 100, 100), Scalar(255), -1, 8, 0);
         arrowedLine(mira, Point(100, 100), Point((int)(100 + cos(angle) * 50), (int)(100 + sin(angle) * 50)), Scalar(128), 1, 8, 0, .1);
         imshow("Mira", mira);
+
+
+        startingQuadrant = quadrant;
+        startingAngle = angle;
+
     #endif
+
+    } 
+}
+
+void findRoute(int quadrant, Mat * WorkingSpace){
+    Point currentPoint(0,0);
+    int lastDirection = 0; // 1=N, 2=O, 3=S, 4=E
+    int nextDirection = 0;
+    unsigned short directions[4];
+
+    Point vecinos[4] = {Point(0,1), Point(-1,0), Point(0,-1), Point(1,0)};
+
+    //quadrant1(323, 261), quadrant2(81, 251), quadrant3(81, 445), quadrant4(323, 459);
+
+    if (quadrant == 1) {
+        currentPoint = Point(323, 361);
     }
-    
-    
+    else if (quadrant == 2) {
+        currentPoint = Point(81, 251);
+    }
+    else if (quadrant == 3) {
+        currentPoint = Point(81, 445);
+    }
+    else {
+        currentPoint = Point(323, 459);
+    }
+
+    while ((*WorkingSpace).at<ushort>(currentPoint) != 0) {
+        rectangle(parkingLotImage, Rect(currentPoint.x, currentPoint.y, robotRadius, robotRadius), Scalar(150), -1, 8, 0);
+        (*WorkingSpace).at<ushort>(currentPoint) = 0xffff;
+
+        //cout << "Current point is: " << currentPoint.x << ", " << currentPoint.y << endl;
+
+        directions[0] = (*WorkingSpace).at<ushort>(currentPoint + Point(0,1));
+        //cout << "North: " << directions[0] << endl;
+        directions[1] = (*WorkingSpace).at<ushort>(currentPoint + Point(-1,0));
+        //cout << "West: " << directions[1] << endl;
+        directions[2] = (*WorkingSpace).at<ushort>(currentPoint + Point(0,-1));
+        //cout << "South: " << directions[2] << endl;
+        directions[3] = (*WorkingSpace).at<ushort>(currentPoint + Point(1,0));
+        //cout << "East: " << directions[3] << endl;
+
+        for (int i = 0; i < 3; i++) {
+            nextDirection = (directions[i] < directions[i+1]) ? i : i + 1;
+        }
+
+        //cout << "Distancia a destino: " << directions[nextDirection] << endl;
+
+        currentPoint = currentPoint + vecinos[nextDirection];
+
+        /*
+        while(true) {
+            int x = waitKey(3);
+            if (x == 'x') {
+                break;
+            }
+        }
+        */
+
+        imshow("Parking Lot", parkingLotImage);
+        imshow("Working Space", *WorkingSpace);
+
+    }
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
