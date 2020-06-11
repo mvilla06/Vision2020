@@ -37,12 +37,16 @@ using namespace std;
 
 // Here we will store points
 Point p(0, 0), q(0, 0), obst_p(0, 0), obst_q(0,0);
+Point robot_p(0,0), robot_q(0,0);
+Point Pf(0,0), Pi(0,0);
+
 unsigned char thVal = 0;
 
 Mat parkingLotImage;
+
 int newObstacle = 0, lastObstacle = 0;
 int radiusCapture = 1, robotRadius = 0;
-Point robot_p(0,0), robot_q(0,0);
+int finalPointCapture = 0;
 
 void getRegions(Mat &image, long int * ordinary_moments ){
     Mat color(image.rows, image.cols, CV_8UC1, Scalar(0));
@@ -107,10 +111,8 @@ void getRegions(Mat &image, long int * ordinary_moments ){
 }
 
 // Get the obstacles from the parking lot
-void obtainObstacles() {
+void obtainObstacles(Mat * WorkingSpace) {
     char x;
-
-    Mat WorkingSpace(parkingLotImage.rows, parkingLotImage.cols, CV_8UC1, Scalar(0));
 
     while (!lastObstacle) {
         if (newObstacle) {
@@ -121,17 +123,17 @@ void obtainObstacles() {
             imshow("Parking Lot", parkingLotImage);
 
             // Building working space and enlargening of obstacles
-            rectangle(WorkingSpace, Rect(obst_p.x, obst_p.y, obstWidth, obstHeight), Scalar(255), -1, 8, 0);
-            rectangle(WorkingSpace, Rect(obst_p.x, obst_p.y - robotRadius, obstWidth, robotRadius), Scalar(255), -1, 8, 0);
-            rectangle(WorkingSpace, Rect(obst_p.x - robotRadius, obst_p.y, robotRadius, obstHeight), Scalar(255), -1, 8, 0);
-            rectangle(WorkingSpace, Rect(obst_p.x, obst_p.y + obstHeight, obstWidth, robotRadius), Scalar(255), -1, 8, 0);
-            rectangle(WorkingSpace, Rect(obst_p.x + obstWidth, obst_p.y, robotRadius, obstHeight), Scalar(255), -1, 8, 0);
-            circle(WorkingSpace, Point(obst_p.x, obst_p.y), robotRadius, Scalar(255), -1, 8, 0);
-            circle(WorkingSpace, Point(obst_p.x, obst_p.y + obstHeight), robotRadius, Scalar(255), -1, 8, 0);
-            circle(WorkingSpace, Point(obst_q.x, obst_q.y), robotRadius, Scalar(255), -1, 8, 0);
-            circle(WorkingSpace, Point(obst_q.x, obst_q.y - obstHeight), robotRadius, Scalar(255), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x, obst_p.y, obstWidth, obstHeight), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x, obst_p.y - robotRadius, obstWidth, robotRadius), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x - robotRadius, obst_p.y, robotRadius, obstHeight), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x, obst_p.y + obstHeight, obstWidth, robotRadius), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x + obstWidth, obst_p.y, robotRadius, obstHeight), Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_p.x, obst_p.y), robotRadius, Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_p.x, obst_p.y + obstHeight), robotRadius, Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_q.x, obst_q.y), robotRadius, Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_q.x, obst_q.y - obstHeight), robotRadius, Scalar(0xffff), -1, 8, 0);
 
-            imshow("Working Space", WorkingSpace);
+            imshow("Working Space", *WorkingSpace);
 
         }
 
@@ -140,6 +142,51 @@ void obtainObstacles() {
             lastObstacle = 1;
         }
     }  
+}
+
+void obtainPotentialFields(Mat * WorkingSpace) {
+    unsigned short count = 1;
+
+    vector<Point> vecinos;
+    Point p(0, 1);
+    vecinos.push_back(p);
+    p.x = -1;
+    p.y = 0;
+    vecinos.push_back(p);
+    p.x = 0;
+    p.y = -1;
+    vecinos.push_back(p);
+    p.x = 1;
+    p.y = 0;
+    vecinos.push_back(p);
+
+    queue<Point> lista;
+    lista.push(Pf);
+    //cout << "push " << Pf.x << ", " << Pf.y << endl;
+    //(*WorkingSpace).at<uchar>(Pf) = 0x00;
+    Point punto;
+
+    while(lista.empty() == false) {
+        punto.x = lista.front().x;
+        punto.y = lista.front().y;
+        lista.pop();
+        //cout << "pop " << punto.x << ", " << punto.y << endl;
+
+        for(int i = 0; i<4; i++){
+            Point currentPoint = punto + vecinos[i];
+            if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < 400 && currentPoint.y < 610 &&
+                (*WorkingSpace).at<ushort>(currentPoint) == 0) {
+                lista.push(currentPoint);
+                //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
+                (*WorkingSpace).at<ushort>(currentPoint) = count;
+            }
+        }
+
+        count++;
+        cout << "Count = " << count << endl;
+    }
+
+    imshow("Working Space", *WorkingSpace);
 }
 
 
@@ -209,7 +256,29 @@ int main(int argc, char *argv[])
     imshow("Parking Lot", parkingLotImage);
     setMouseCallback("Parking Lot", obstacleCaptureCallback);
 
-    obtainObstacles();
+    //cout << parkingLotImage.cols << "x" << parkingLotImage.rows << endl;
+
+    // Obtain the Working Space
+    Mat WorkingSpace(parkingLotImage.rows, parkingLotImage.cols, CV_16UC1, Scalar(0));
+    obtainObstacles(&WorkingSpace);
+
+    // Obtain destination point
+    do {
+        finalPointCapture = 1;
+        while (finalPointCapture) {
+            char x = waitKey(3);
+            if (x == 'm') {
+                finalPointCapture = 0;
+            }
+        }
+        cout << "El valor del punto elegido es: " << WorkingSpace.at<ushort>(Pf) << endl;
+    } while (WorkingSpace.at<ushort>(Pf) != 0);
+
+    cout << "Punto final: " << Pf.x << "," << Pf.y << endl;
+
+
+    // Calculate the Potential Fields
+    obtainPotentialFields(&WorkingSpace);
 
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
@@ -695,6 +764,11 @@ void obstacleCaptureCallback(int event, int x, int y, int flags, void *param) {
             obst_p.y = y;
             obst_q.x = x;
             obst_q.y = y;
+        }
+        if (finalPointCapture) {
+            Pf.x = x;
+            Pf.y = y;
+            cout << "Selected destination point: " << x << ", " << y << " Press (m)" << endl;
         }
         break;
     case CV_EVENT_MOUSEMOVE:
