@@ -6,3 +6,4 @@
 </ul>
 <p>Desarrollo de las actividades de la materia Vision para Robots</p>
 
+<p>Las instrucciones de uso del programa están en el README.md dentro de la carpeta Show-Image.</p>
