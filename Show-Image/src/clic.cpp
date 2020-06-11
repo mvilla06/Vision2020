@@ -264,7 +264,7 @@ void obtainPotentialFields(Mat * WorkingSpace) {
         for(int i = 0; i<4; i++){
             Point currentPoint = punto + vecinos[i];
             if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < 400 && currentPoint.y < 610 &&
-                (*WorkingSpace).at<ushort>(currentPoint) == 0 && currentPoint != Pf) {
+                (*WorkingSpace).at<ushort>(currentPoint) != 0xffff && currentPoint != Pf) {
                 lista.push(currentPoint);
                 //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
                 (*WorkingSpace).at<ushort>(currentPoint) = count;
@@ -333,7 +333,7 @@ void draw(Mat image, char t, char *o, unsigned char *threshold);
 
 void selection(Mat image, unsigned char *threshold, Mat original, char * r);
 
-void findRoute(int quadrant, /*double angle, */ Mat * WorkingSpace);
+void findRoute(int quadrant, double angle, Mat * WorkingSpace);
 
 
 
@@ -379,8 +379,7 @@ int main(int argc, char *argv[])
     cout << "Punto final: " << Pf.x << "," << Pf.y << endl;
 
 
-    // Calculate the Potential Fields
-    obtainPotentialFields(&WorkingSpace);
+    
 
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
@@ -442,12 +441,16 @@ int main(int argc, char *argv[])
             if (o && f)
             {
                 selection(currentImage, threshold, originalImage, &r);
+                //cout << "Starting quadrant: " << startingQuadrant << endl;
+                //cout << "Starting angle: " << startingAngle << endl;
             }
             else
                 destroyWindow("Selection");
 
             if (route) {
-                findRoute(3, &WorkingSpace);
+                // Calculate the Potential Fields
+                obtainPotentialFields(&WorkingSpace);
+                findRoute(startingQuadrant, startingAngle, &WorkingSpace);
                 route = ~route;
             }
 
@@ -852,7 +855,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
     } 
 }
 
-void findRoute(int quadrant, Mat * WorkingSpace){
+void findRoute(int quadrant, double angle, Mat * WorkingSpace){
     Point currentPoint(0,0);
     int lastDirection = 0; // 1=N, 2=O, 3=S, 4=E
     int nextDirection = 0;
@@ -898,7 +901,7 @@ void findRoute(int quadrant, Mat * WorkingSpace){
             }
         }
 
-        cout << "Distancia a destino: " << directions[nextDirection] << endl;
+        //cout << "Distancia a destino: " << directions[nextDirection] << endl;
 
         currentPoint = currentPoint + vecinos[nextDirection];
 
