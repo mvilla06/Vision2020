@@ -36,8 +36,17 @@ using namespace cv;
 using namespace std;
 
 // Here we will store points
-Point p(0, 0), q(0, 0);
+Point p(0, 0), q(0, 0), obst_p(0, 0), obst_q(0,0);
+Point robot_p(0,0), robot_q(0,0);
+Point Pf(0,0), Pi(0,0);
+
 unsigned char thVal = 0;
+
+Mat parkingLotImage;
+
+int newObstacle = 0, lastObstacle = 0;
+int radiusCapture = 1, robotRadius = 0;
+int finalPointCapture = 0;
 
 void getRegions(Mat &image, long int * ordinary_moments ){
     Mat color(image.rows, image.cols, CV_8UC1, Scalar(0));
@@ -94,10 +103,163 @@ void getRegions(Mat &image, long int * ordinary_moments ){
             }
 
         }
+        //printf("m1=%ld\nm2=%ld\nm3=%ld\nm4=%ld\nm5=%ld\nm6=%ld\n", ordinary_moments[0], ordinary_moments[1], ordinary_moments[2], ordinary_moments[3], ordinary_moments[4], ordinary_moments[5]);
         
     }
     imshow("Color", color);
     
+}
+
+// Get the obstacles from the parking lot
+void obtainObstacles(Mat * WorkingSpace) {
+    /*char x;
+
+    while (!lastObstacle) {
+        if (newObstacle) {
+            int obstWidth = obst_q.x - obst_p.x;
+            int obstHeight = obst_q.y - obst_p.y;
+            rectangle(parkingLotImage, Rect(obst_p.x, obst_p.y, obstWidth, obstHeight), Scalar(255), -1, 8, 0);
+            newObstacle = 0;
+            imshow("Parking Lot", parkingLotImage);
+
+            // Building working space and enlargening of obstacles
+            rectangle(*WorkingSpace, Rect(obst_p.x, obst_p.y, obstWidth, obstHeight), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x, obst_p.y - robotRadius, obstWidth, robotRadius), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x - robotRadius, obst_p.y, robotRadius, obstHeight), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x, obst_p.y + obstHeight, obstWidth, robotRadius), Scalar(0xffff), -1, 8, 0);
+            rectangle(*WorkingSpace, Rect(obst_p.x + obstWidth, obst_p.y, robotRadius, obstHeight), Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_p.x, obst_p.y), robotRadius, Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_p.x, obst_p.y + obstHeight), robotRadius, Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_q.x, obst_q.y), robotRadius, Scalar(0xffff), -1, 8, 0);
+            circle(*WorkingSpace, Point(obst_q.x, obst_q.y - obstHeight), robotRadius, Scalar(0xffff), -1, 8, 0);
+
+            imshow("Working Space", *WorkingSpace);
+
+        }
+
+        x = waitKey(3);
+        if (x == 'z') {
+            lastObstacle = 1;
+        }
+    }  */
+
+    int maxDiff = 0;
+    int x, y, timeout=0;
+        do{
+            maxDiff = 0;
+        x = rand()%parkingLotImage.cols;
+        y = rand()%parkingLotImage.rows;
+        for(int i = 0; i < parkingLotImage.channels() - 1; i++){
+            if(abs(parkingLotImage.at<Vec3b>(y, x)[i] - parkingLotImage.at<Vec3b>(y, x)[i+1] ) > maxDiff)
+                maxDiff = abs(parkingLotImage.at<Vec3b>(y, x)[i] - parkingLotImage.at<Vec3b>(y, x)[i+1]);
+        }
+        printf("Buscando %d\n", maxDiff);
+        printf("%d   %d\n", x, y);
+        //timeout++;
+        }while(( maxDiff > 20  )&& timeout<10000 );
+        
+
+    Point q(x, y);
+    vector<Point> vecinos;
+    Point p(0, 1);
+    vecinos.push_back(p);
+    p.x = -1;
+    p.y = 0;
+    vecinos.push_back(p);
+    p.x = 0;
+    p.y = -1;
+    vecinos.push_back(p);
+    p.x = 1;
+    p.y = 0;
+    vecinos.push_back(p);
+
+    queue<Point> lista;
+    lista.push(q);
+    //cout << "push " << Pf.x << ", " << Pf.y << endl;
+    (*WorkingSpace).at<ushort>(q) = 0x0;
+    Point punto;
+
+    while(lista.empty() == false) {
+        punto.x = lista.front().x;
+        punto.y = lista.front().y;
+        lista.pop();
+        //cout << "pop " << punto.x << ", " << punto.y << endl;
+        int diff = 0;
+        for(int i = 0; i<4; i++){
+            Point currentPoint = punto + vecinos[i];
+            maxDiff = 0;
+            diff = 0;
+            for(int i = 0; i < parkingLotImage.channels() ; i++){
+                if (abs(parkingLotImage.at<Vec3b>(currentPoint)[i] - parkingLotImage.at<Vec3b>(punto)[i]) > maxDiff)
+                    maxDiff = abs(parkingLotImage.at<Vec3b>(currentPoint)[i] - parkingLotImage.at<Vec3b>(punto)[i]);
+            }
+
+            for(int i = 0; i < parkingLotImage.channels() - 1; i++){
+            if(abs(parkingLotImage.at<Vec3b>(currentPoint)[i] - parkingLotImage.at<Vec3b>(currentPoint)[i+1] ) > diff)
+                diff = abs(parkingLotImage.at<Vec3b>(currentPoint)[i] - parkingLotImage.at<Vec3b>(currentPoint)[i+1]);
+        }
+            
+            if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < parkingLotImage.cols && currentPoint.y < parkingLotImage.rows &&
+                (*WorkingSpace).at<ushort>(currentPoint) == 0xffff && (maxDiff < 8)){//|| diff< 4)) {
+                lista.push(currentPoint);
+                //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
+                (*WorkingSpace).at<ushort>(currentPoint) = 0x0;
+            }
+        }
+
+    }
+    imshow("w", *WorkingSpace);
+    morphologyEx(*WorkingSpace, *WorkingSpace, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size (3, 3)), Point(-1, -1) , 1); 
+    dilate(*WorkingSpace, *WorkingSpace, getStructuringElement(MORPH_ELLIPSE, Size (5, 5)), Point(-1, -1) , 2 , 0, 0xffff);
+    
+    imshow("Working Space", *WorkingSpace);
+
+
+}
+
+void obtainPotentialFields(Mat * WorkingSpace) {
+    unsigned short count = 1;
+
+    vector<Point> vecinos;
+    Point p(0, 1);
+    vecinos.push_back(p);
+    p.x = -1;
+    p.y = 0;
+    vecinos.push_back(p);
+    p.x = 0;
+    p.y = -1;
+    vecinos.push_back(p);
+    p.x = 1;
+    p.y = 0;
+    vecinos.push_back(p);
+
+    queue<Point> lista;
+    lista.push(Pf);
+    //cout << "push " << Pf.x << ", " << Pf.y << endl;
+    //(*WorkingSpace).at<uchar>(Pf) = 0x00;
+    Point punto;
+
+    while(lista.empty() == false) {
+        punto.x = lista.front().x;
+        punto.y = lista.front().y;
+        lista.pop();
+        //cout << "pop " << punto.x << ", " << punto.y << endl;
+
+        for(int i = 0; i<4; i++){
+            Point currentPoint = punto + vecinos[i];
+            if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < 400 && currentPoint.y < 610 &&
+                (*WorkingSpace).at<ushort>(currentPoint) == 0) {
+                lista.push(currentPoint);
+                //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
+                (*WorkingSpace).at<ushort>(currentPoint) = count;
+            }
+        }
+
+        count++;
+        //cout << "Count = " << count << endl;
+    }
+
+    imshow("Working Space", *WorkingSpace);
 }
 
 
@@ -119,6 +281,9 @@ void mouseCallback(int event, int x, int y, int flags, void* param){
         break;
     }
 }
+
+void obstacleCaptureCallback(int event, int x, int y, int flags, void *param);
+
 void histogram(const Mat &image, char t, unsigned char *threshold, char o, char colorSpace);
 void destroyHistogram()
 {
@@ -143,6 +308,8 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r);
 
 
 
+
+
 int main(int argc, char *argv[])
 {
     /* First, open camera device */
@@ -157,8 +324,40 @@ int main(int argc, char *argv[])
     namedWindow("Image");
     setMouseCallback("Image", mouseCoordinatesExampleCallback);
 
+    //Parking lot image
+    parkingLotImage = imread("Car-Parking-03.jpg", CV_LOAD_IMAGE_COLOR);
+    medianBlur(parkingLotImage, parkingLotImage, 5);
+    namedWindow("Parking Lot");
+    setMouseCallback("Parking Lot", obstacleCaptureCallback);
+    
+    //cout << parkingLotImage.cols << "x" << parkingLotImage.rows << endl;
+    imshow("Parking Lot", parkingLotImage);
+    // Obtain the Working Space
+    Mat WorkingSpace(parkingLotImage.rows, parkingLotImage.cols, CV_16UC1, Scalar(0xffff));
+    obtainObstacles(&WorkingSpace);
+
+    // Obtain destination point
+    do {
+        finalPointCapture = 1;
+        while (finalPointCapture) {
+            char x = waitKey(3);
+            if (x == 'm') {
+                finalPointCapture = 0;
+            }
+        }
+        cout << "El valor del punto elegido es: " << WorkingSpace.at<ushort>(Pf) << endl;
+        printf("%d   %d\n", Pf.x, Pf.y);
+    } while (WorkingSpace.at<ushort>(Pf) != 0);
+
+    cout << "Punto final: " << Pf.x << "," << Pf.y << endl;
+
+
+    // Calculate the Potential Fields
+    obtainPotentialFields(&WorkingSpace);
+
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
     // v -> Convert to HSV
+    // o -> ROI color selection, f -> filter, r-> get regions
     char t = 0, h = 0, o = 0, b = 0, v = 0, y = 0, f = 0, r = 0;
     char colorSpace = 0; // 0->BGR, 1->BW, 2->YIQ, 3->HSV
     char x;
@@ -223,13 +422,10 @@ int main(int argc, char *argv[])
             if (h)
                 histogram(currentImage, t, threshold, o, colorSpace);
             else
-            {
-                
-                        
-                    destroyHistogram();   
-                
-                
+            {        
+                destroyHistogram();      
             }
+
 
             imshow("Image", originalImage);
             imshow("Processed Image", currentImage);
@@ -377,7 +573,7 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             else
             {
                 
-                    filteredImage.at<uchar>(r, c) = 0xFF;
+                filteredImage.at<uchar>(r, c) = 0xFF;
             }
         }
     }
@@ -537,24 +733,24 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
             }
             
             //Check if difference with trained object is less than the deviation of the samples
-            //if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3]){
-                    switch(index){
-                        case 0:
-                            o1 = 1;
-                            long_object = i;
-                            break;
-                        case 1:
-                            o2 = 1;
-                            long_object = i;
-                            break;
-                        case 2:
-                            o3 = 1;
-                            break;
-                        case 3:
-                            o4 = 1;
-                            break;
-                    }
-            //}
+            //if(abs(phi[i*2]-parameters[index*4]) <= parameters[index*4 + 2] &&  abs(phi[i*2+1]-parameters[index*4+1]) <= parameters[index*4 +3])
+            switch(index){
+                case 0:
+                    o1 = 1;
+                    long_object = i;
+                    break;
+                case 1:
+                    o2 = 1;
+                    long_object = i;
+                    break;
+                case 2:
+                    o3 = 1;
+                    break;
+                case 3:
+                    o4 = 1;
+                    break;
+            }
+
         }
         
 
@@ -574,6 +770,8 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
         else
             angle = (M_PI/3);
         printf("%f\n", angle);
+        printf("Long object = %d\n", long_object);
+        printf("o1 = %d\no2 = %d\no3 = %d\no4 = %d\n", o1, o2, o3, o4);
 
         double x_max, y_max;
         x_max = parameters[0];
@@ -625,6 +823,50 @@ void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *p
         q.x = x;
         q.y = y;
 
+        break;
+    }
+}
+
+void obstacleCaptureCallback(int event, int x, int y, int flags, void *param) {
+    switch (event) {
+    case CV_EVENT_LBUTTONDOWN:
+        if (radiusCapture) {
+            robot_p.x = x;
+            robot_p.y = y;
+            robot_q.x = x;
+            robot_q.y = y;
+        }
+        else {
+            obst_p.x = x;
+            obst_p.y = y;
+            obst_q.x = x;
+            obst_q.y = y;
+        }
+        if (finalPointCapture) {
+            printf("Hola\n");
+            Pf.x = x;
+            Pf.y = y;
+            cout << "Selected destination point: " << x << ", " << y << " Press (m)" << endl;
+        }
+        break;
+    case CV_EVENT_MOUSEMOVE:
+        break;
+    case CV_EVENT_LBUTTONUP:
+        if (radiusCapture) {
+            robot_q.x = x;
+            robot_q.y = y;
+            radiusCapture = 0;
+
+            int robotWidth = robot_q.x - robot_p.x;
+            int robotHeight = robot_q.y - robot_p.y;
+
+            robotRadius = (robotWidth < robotHeight) ? robotWidth / 2 : robotHeight / 2;
+        }
+        else {
+            obst_q.x = x;
+            obst_q.y = y;
+            newObstacle = 1;
+        }
         break;
     }
 }
