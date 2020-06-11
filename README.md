@@ -1,6 +1,6 @@
 <h1>Vision para Robots</h1>
 <ul>
-	<li>Autor: Mauricio Villalpando
+	<li>Autores: Mauricio Villalpando Puente, Pedro Gómez de la Garza, Stephanie Mora Gutiérrez, Sharif Nasser Kadamani
 	<li>Materia: Vision para Robots (TC-3050)
 	<li>Periodo: Febrero-Junio 2020
 </ul>
