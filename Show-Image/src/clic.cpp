@@ -266,6 +266,7 @@ void obtainPotentialFields(Mat * WorkingSpace) {
             Point currentPoint = punto + vecinos[i];
             if(currentPoint.x >= 0 && currentPoint.y >= 0 && currentPoint.x < 400 && currentPoint.y < 610 &&
                 (*WorkingSpace).at<ushort>(currentPoint) == 0 && currentPoint != Pf) {
+
                 lista.push(currentPoint);
                 //cout << "push " << (punto+vecinos[i]).x << ", " << (punto+vecinos[i]).y << endl;
                 (*WorkingSpace).at<ushort>(currentPoint) = count;
@@ -398,7 +399,7 @@ int main(int argc, char *argv[])
 
     cout << "Punto final: " << Pf.x << "," << Pf.y << endl;
 
-
+    obtainPotentialFields(&WorkingSpace);
     
 
     // Flags: t -> Freeze camera, h -> Build histograms, b -> Convert grayscale, y-> Convert YIQ
@@ -469,6 +470,7 @@ int main(int argc, char *argv[])
 
             if (route) {
                 // Calculate the Potential Fields
+
                 //cout << "About to obtainPotentialFields" << endl;
                 clearRouteInWorkingSpace(&WorkingSpace);
 
@@ -516,6 +518,7 @@ int main(int argc, char *argv[])
                 obtainPotentialFields(&WorkingSpaceWithDirection);
                 //cout << "Potential fields obtained" << endl;
                 findRoute(startingQuadrant, startingAngle, &WorkingSpaceWithDirection);
+
                 route = ~route;
             }
 
@@ -921,11 +924,13 @@ void selection(Mat image, unsigned char *threshold, Mat original, char * r)
 }
 
 void findRoute(int quadrant, double angle, Mat * WorkingSpace){
+
     routeImage = imread("Car-Parking-03.jpg", CV_LOAD_IMAGE_COLOR);
     namedWindow("Route");
 
     Point currentPoint(0,0);
     int lastDirection = 0; // 1=N, 2=O, 3=S, 4=E
+
     int nextDirection = 0;
     unsigned short directions[4];
 
@@ -945,6 +950,10 @@ void findRoute(int quadrant, double angle, Mat * WorkingSpace){
     else {
         currentPoint = Point(323, 459);
     }
+
+    currentPoint = Point(351, 235);
+    printf("%d, %d\n", currentPoint.x, currentPoint.y);
+    circle(parkingLotImage, currentPoint, 10, Scalar(255,0,0), -1, 8, 0);
 
     while ((*WorkingSpace).at<ushort>(currentPoint) != 0) {
         rectangle(routeImage, Rect(currentPoint.x, currentPoint.y, 5, 5), Scalar(255), -1, 8, 0);
@@ -970,29 +979,19 @@ void findRoute(int quadrant, double angle, Mat * WorkingSpace){
             }
         }
 
-        unsigned short ex1 = 100, ex2 = 65535;
-        if (ex1 > ex2) {
-            cout << "100 > 65535" << endl; 
-        }
 
         //cout << "Distancia a destino: " << directions[nextDirection] << endl;
 
         currentPoint = currentPoint + vecinos[nextDirection];
+        //printf("%d, %d\n", currentPoint.x, currentPoint.y);
+       
 
-        /*
-        while(true) {
-            int x = waitKey(3);
-            if (x == 'x') {
-                break;
-            }
-        }
-        */
         
 
         imshow("Route", routeImage);
         imshow("Working Space", *WorkingSpace);
-
     }
+    
 }
 
 void mouseCoordinatesExampleCallback(int event, int x, int y, int flags, void *param)
